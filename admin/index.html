@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玄机塔罗 · 管理后台</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+:root {
+  --bg:       #0c0a1a;
+  --bg2:      #131128;
+  --bg3:      #1a1835;
+  --bg4:      #201e40;
+  --gold:     #c9a84c;
+  --gold-lt:  #e8d48b;
+  --gold-dim: #7a6430;
+  --purple:   #7c5cbf;
+  --purp-lt:  #a888e8;
+  --text:     #e8e0f0;
+  --text2:    #a89bc0;
+  --text3:    #6b5f82;
+  --border:   #2d2650;
+  --blt:      #3d3470;
+  --red:      #e05c6c;
+  --green:    #5cbf8a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'PingFang SC','Microsoft YaHei',system-ui,sans-serif;font-size:14px}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--blt);border-radius:3px}
+a{color:var(--gold);text-decoration:none}
+button{cursor:pointer;font-family:inherit;font-size:inherit}
+
+/* ── Layout ── */
+#app{display:flex;height:100vh;overflow:hidden}
+aside{width:200px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+main{flex:1;overflow-y:auto;background:var(--bg)}
+
+/* ── Sidebar ── */
+.sidebar-logo{padding:1.2rem 1rem;border-bottom:1px solid var(--border)}
+.sidebar-logo h1{font-size:.95rem;color:var(--gold-lt);font-weight:700;letter-spacing:.06em}
+.sidebar-logo p{font-size:.7rem;color:var(--text3);margin-top:.1rem}
+.sidebar-nav{flex:1;padding:.5rem 0}
+.nav-item{display:flex;align-items:center;gap:.6rem;padding:.65rem 1rem;color:var(--text2);cursor:pointer;transition:.15s;border-left:2px solid transparent;font-size:.85rem}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--bg3);color:var(--gold-lt);border-left-color:var(--gold)}
+.nav-item .icon{width:18px;text-align:center;font-size:1rem}
+.sidebar-footer{padding:.8rem 1rem;border-top:1px solid var(--border)}
+.sidebar-footer p{font-size:.72rem;color:var(--text3)}
+.sidebar-footer span{color:var(--text2)}
+
+/* ── Page header ── */
+.page-header{padding:1.4rem 1.5rem .8rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.page-header h2{font-size:1.05rem;color:var(--gold-lt);font-weight:700;letter-spacing:.05em}
+.page-header p{font-size:.75rem;color:var(--text3);margin-top:.15rem}
+.page-body{padding:1.2rem 1.5rem}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:.3rem;padding:.45rem .95rem;border-radius:7px;border:none;font-size:.82rem;font-weight:600;cursor:pointer;transition:.2s;letter-spacing:.02em}
+.btn-gold{background:linear-gradient(135deg,#6a4a10,#c9a84c,#6a4a10);background-size:200%;color:#1a0f00}
+.btn-gold:hover{background-position:right}
+.btn-outline{background:transparent;border:1px solid var(--blt);color:var(--text2)}
+.btn-outline:hover{border-color:var(--gold-dim);color:var(--gold)}
+.btn-danger{background:rgba(224,92,108,.12);border:1px solid rgba(224,92,108,.35);color:var(--red)}
+.btn-danger:hover{background:rgba(224,92,108,.22)}
+.btn-sm{padding:.3rem .65rem;font-size:.75rem}
+.btn-success{background:rgba(92,191,138,.12);border:1px solid rgba(92,191,138,.35);color:var(--green)}
+.btn-success:hover{background:rgba(92,191,138,.22)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Stats cards ── */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.9rem;margin-bottom:1.5rem}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.1rem;transition:.2s}
+.stat-card:hover{border-color:var(--blt)}
+.stat-label{font-size:.73rem;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.5rem}
+.stat-value{font-size:1.8rem;font-weight:700;color:var(--gold-lt);line-height:1}
+.stat-sub{font-size:.72rem;color:var(--text3);margin-top:.3rem}
+
+/* ── Table ── */
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1rem}
+table{width:100%;border-collapse:collapse}
+thead tr{background:var(--bg3);border-bottom:1px solid var(--border)}
+th{padding:.65rem .8rem;text-align:left;font-size:.73rem;color:var(--text3);font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+td{padding:.6rem .8rem;border-bottom:1px solid rgba(45,38,80,.5);font-size:.82rem;color:var(--text2)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(32,30,64,.4)}
+.badge{display:inline-block;font-size:.68rem;padding:.15rem .5rem;border-radius:12px}
+.badge-member{background:rgba(201,168,76,.15);border:1px solid rgba(201,168,76,.35);color:var(--gold-lt)}
+.badge-free{background:rgba(107,95,130,.15);border:1px solid rgba(107,95,130,.3);color:var(--text3)}
+.badge-used{background:rgba(92,191,138,.12);border:1px solid rgba(92,191,138,.3);color:var(--green)}
+.badge-unused{background:rgba(107,95,130,.12);border:1px solid rgba(107,95,130,.25);color:var(--text3)}
+
+/* ── Forms ── */
+.form-row{display:flex;gap:.6rem;margin-bottom:1rem;flex-wrap:wrap}
+.form-input{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:.45rem .8rem;color:var(--text);font-size:.85rem;font-family:inherit}
+.form-input:focus{outline:none;border-color:var(--purple)}
+
+/* ── Modal ── */
+#modal-overlay{display:none;position:fixed;inset:0;background:rgba(7,5,15,.8);backdrop-filter:blur(3px);z-index:200;align-items:center;justify-content:center}
+#modal-overlay.show{display:flex}
+.modal-box{background:var(--bg3);border:1px solid var(--blt);border-radius:14px;padding:1.6rem;width:100%;max-width:420px;position:relative}
+.modal-title{font-size:.95rem;color:var(--gold-lt);font-weight:700;margin-bottom:1.2rem}
+.modal-footer{display:flex;justify-content:flex-end;gap:.6rem;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:1.2rem;right:1.2rem;background:var(--bg4);border:1px solid var(--blt);border-radius:9px;padding:.6rem 1.1rem;font-size:.82rem;z-index:999;transition:.3s;transform:translateY(60px);opacity:0;pointer-events:none}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ok{border-color:var(--gold-dim);color:var(--gold-lt)}
+#toast.err{border-color:rgba(224,92,108,.5);color:var(--red)}
+
+/* ── Pie chart ── */
+.pie-wrap{display:flex;align-items:center;gap:2rem;flex-wrap:wrap}
+.pie-legend{display:flex;flex-direction:column;gap:.55rem}
+.pie-legend-item{display:flex;align-items:center;gap:.6rem;font-size:.82rem;color:var(--text2)}
+.pie-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* ── Code list ── */
+.code-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.5rem;margin-top:.8rem}
+.code-item{background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:.5rem .7rem;font-size:.78rem;font-family:monospace;color:var(--gold-lt);display:flex;align-items:center;justify-content:space-between;gap:.4rem;word-break:break-all}
+
+/* ── Login page ── */
+#login-page{display:flex;align-items:center;justify-content:center;height:100vh;background:radial-gradient(ellipse at 50% 30%,rgba(124,92,191,.1) 0,transparent 60%)}
+.login-box{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:2rem;width:100%;max-width:360px}
+.login-logo{text-align:center;margin-bottom:1.5rem}
+.login-logo h1{font-size:1.1rem;color:var(--gold-lt);letter-spacing:.08em}
+.login-logo p{font-size:.72rem;color:var(--text3);margin-top:.2rem}
+.fgroup{margin-bottom:.9rem}
+.fgroup label{display:block;font-size:.75rem;color:var(--text2);margin-bottom:.3rem}
+.fgroup input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:.55rem .8rem;color:var(--text);font-size:.88rem;font-family:inherit}
+.fgroup input:focus{outline:none;border-color:var(--purple)}
+
+/* ── Pagination ── */
+.pagination{display:flex;align-items:center;gap:.4rem;justify-content:flex-end;margin-top:.8rem}
+.pager{padding:.3rem .65rem;border-radius:5px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:.75rem;cursor:pointer}
+.pager:hover{border-color:var(--blt);color:var(--text)}
+.pager.active{background:var(--bg4);border-color:var(--gold-dim);color:var(--gold-lt);cursor:default}
+.pager:disabled{opacity:.4;cursor:not-allowed}
+
+.view-section{display:none}
+.view-section.active{display:block}
+</style>
+</head>
+<body>
+
+<!-- ── Login Page ─────────────────────────────────────────────── -->
+<div id="login-page">
+  <div class="login-box">
+    <div class="login-logo">
+      <div style="font-size:1.8rem;margin-bottom:.4rem">✦</div>
+      <h1>玄机塔罗</h1>
+      <p>管理后台</p>
+    </div>
+    <form onsubmit="doAdminLogin(event)">
+      <div class="fgroup">
+        <label>管理员账号</label>
+        <input type="text" id="a-user" placeholder="admin" required autocomplete="username">
+      </div>
+      <div class="fgroup">
+        <label>密码</label>
+        <input type="password" id="a-pass" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-gold" style="width:100%;justify-content:center;margin-top:.4rem">登录管理后台</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── Admin App ──────────────────────────────────────────────── -->
+<div id="app" style="display:none">
+  <aside>
+    <div class="sidebar-logo">
+      <h1>✦ 玄机塔罗</h1>
+      <p>管理后台</p>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="switchSection('dashboard')" id="nav-dashboard">
+        <span class="icon">◈</span> 仪表盘
+      </div>
+      <div class="nav-item" onclick="switchSection('users')" id="nav-users">
+        <span class="icon">👤</span> 用户管理
+      </div>
+      <div class="nav-item" onclick="switchSection('invites')" id="nav-invites">
+        <span class="icon">🔑</span> 邀请码
+      </div>
+      <div class="nav-item" onclick="switchSection('catstat')" id="nav-catstat">
+        <span class="icon">📊</span> 提问统计
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <p>当前账号</p>
+      <span id="admin-name">admin</span>
+      <div style="margin-top:.5rem">
+        <button class="btn btn-outline btn-sm" onclick="doLogout()">退出</button>
+      </div>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ── Dashboard ─────────────────────────────── -->
+    <section id="sec-dashboard" class="view-section active">
+      <div class="page-header">
+        <div><h2>仪表盘</h2><p>站点整体数据概览</p></div>
+        <button class="btn btn-outline btn-sm" onclick="loadDashboard()">↻ 刷新</button>
+      </div>
+      <div class="page-body">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card"><div class="stat-label">总用户数</div><div class="stat-value" id="s-users">-</div><div class="stat-sub">注册用户（不含管理员）</div></div>
+          <div class="stat-card"><div class="stat-label">今日新增</div><div class="stat-value" id="s-today-users">-</div><div class="stat-sub">今日注册用户</div></div>
+          <div class="stat-card"><div class="stat-label">今日推演</div><div class="stat-value" id="s-today-rd">-</div><div class="stat-sub">今日推演次数</div></div>
+          <div class="stat-card"><div class="stat-label">星渊会员</div><div class="stat-value" id="s-members">-</div><div class="stat-sub">当前有效会员</div></div>
+          <div class="stat-card"><div class="stat-label">累计推演</div><div class="stat-value" id="s-total-rd">-</div><div class="stat-sub">所有历史推演</div></div>
+        </div>
+
+        <!-- Quick category preview on dashboard -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h3 style="font-size:.88rem;color:var(--gold-lt)">近30天提问分布</h3>
+            <button class="btn btn-outline btn-sm" onclick="switchSection('catstat')">查看详情 →</button>
+          </div>
+          <div id="dash-cat-preview">
+            <div style="color:var(--text3);font-size:.8rem">加载中…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Users ──────────────────────────────────── -->
+    <section id="sec-users" class="view-section">
+      <div class="page-header">
+        <div><h2>用户管理</h2><p>查看所有用户，发放或取消星渊会员</p></div>
+      </div>
+      <div class="page-body">
+        <div class="form-row">
+          <input class="form-input" id="user-search" placeholder="搜索用户名…" style="width:200px"
+            oninput="clearTimeout(window._st);window._st=setTimeout(()=>loadUsers(1),400)">
+          <button class="btn btn-outline btn-sm" onclick="loadUsers(1)">搜索</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>用户名</th><th>状态</th><th>剩余/本月用量</th><th>到期时间</th><th>注册时间</th><th>操作</th>
+            </tr></thead>
+            <tbody id="users-tbody">
+              <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:2rem">加载中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="users-pagination"></div>
+      </div>
+    </section>
+
+    <!-- ── Invites ─────────────────────────────────── -->
+    <section id="sec-invites" class="view-section">
+      <div class="page-header">
+        <div><h2>邀请码管理</h2><p>生成一次性邀请码，发放给新用户注册</p></div>
+      </div>
+      <div class="page-body">
+        <div class="form-row" style="align-items:center">
+          <label style="color:var(--text2);font-size:.82rem">生成数量：</label>
+          <input type="number" id="inv-count" class="form-input" value="5" min="1" max="50" style="width:80px">
+          <button class="btn btn-gold" onclick="genCodes()">生成邀请码</button>
+          <button class="btn btn-outline btn-sm" onclick="loadInvites()">↻ 刷新列表</button>
+        </div>
+
+        <!-- Newly generated codes -->
+        <div id="new-codes-box" style="display:none;background:var(--bg2);border:1px solid var(--gold-dim);border-radius:10px;padding:1rem;margin-bottom:1rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+            <span style="font-size:.8rem;color:var(--gold-lt)">新生成的邀请码</span>
+            <button class="btn btn-outline btn-sm" onclick="copyAllCodes()">复制全部</button>
+          </div>
+          <div id="new-codes-list" class="code-grid"></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>邀请码</th><th>状态</th><th>使用者</th><th>使用时间</th><th>创建时间</th><th>操作</th>
+            </tr></thead>
+            <tbody id="invites-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem">加载中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Category Stats ─────────────────────────── -->
+    <section id="sec-catstat" class="view-section">
+      <div class="page-header">
+        <div><h2>提问分类统计</h2><p>分析用户提问的主题分布</p></div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <select id="days-select" class="form-input btn-sm" onchange="loadCatStats()" style="padding:.3rem .6rem">
+            <option value="7">近7天</option>
+            <option value="30" selected>近30天</option>
+            <option value="90">近90天</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="loadCatStats()">↻ 刷新</button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.5rem">
+          <!-- Pie chart -->
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
+            <h3 style="font-size:.85rem;color:var(--text2);margin-bottom:1rem">分类占比</h3>
+            <div class="pie-wrap" id="pie-container">
+              <div style="color:var(--text3);font-size:.8rem">加载中…</div>
+            </div>
+          </div>
+          <!-- Table -->
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
+            <h3 style="font-size:.85rem;color:var(--text2);margin-bottom:1rem">数量明细</h3>
+            <div id="cat-table-wrap">
+              <div style="color:var(--text3);font-size:.8rem">加载中…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Daily breakdown -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
+          <h3 style="font-size:.85rem;color:var(--text2);margin-bottom:1rem">每日明细</h3>
+          <div id="daily-table-wrap">
+            <div style="color:var(--text3);font-size:.8rem">加载中…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div><!-- /app -->
+
+<!-- ── Modal: Grant Member ─────────────────────────── -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">发放星渊会员</div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-gold" id="modal-confirm-btn" onclick="modalConfirm()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ──────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+// ─── State ──────────────────────────────────────────
+const S = {
+  token: localStorage.getItem('xj_admin_token') || '',
+  username: '',
+  userPage: 1,
+  modalAction: null,
+  modalUserId: null,
+};
+
+const CAT_COLORS = {
+  '感情': '#e87878',
+  '事业': '#7cb8f0',
+  '财运': '#e8c878',
+  '健康': '#7ce8a8',
+  '其他': '#a888e8',
+};
+
+// ─── API ─────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (S.token) opts.headers['Authorization'] = 'Bearer ' + S.token;
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({ error: 'JSON解析失败' }));
+  if (!res.ok) throw new Error(data.error || '请求失败');
+  return data;
+}
+
+// ─── Toast ───────────────────────────────────────────
+let _tt;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.className = '', 3000);
+}
+
+// ─── Login ───────────────────────────────────────────
+async function doAdminLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('a-user').value.trim();
+  const password = document.getElementById('a-pass').value;
+  try {
+    const data = await api('POST', '/api/admin/login', { username, password });
+    S.token = data.token;
+    S.username = data.username;
+    localStorage.setItem('xj_admin_token', data.token);
+    showApp();
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+function doLogout() {
+  S.token = '';
+  localStorage.removeItem('xj_admin_token');
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-page').style.display = 'flex';
+}
+
+// ─── App init ────────────────────────────────────────
+function showApp() {
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('admin-name').textContent = S.username || 'admin';
+  loadDashboard();
+}
+
+// ─── Section switch ──────────────────────────────────
+function switchSection(name) {
+  document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'users')   loadUsers(1);
+  if (name === 'invites') loadInvites();
+  if (name === 'catstat') loadCatStats();
+}
+
+// ─── Dashboard ───────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const d = await api('GET', '/api/admin/stats');
+    document.getElementById('s-users').textContent       = d.totalUsers;
+    document.getElementById('s-today-users').textContent = d.todayUsers;
+    document.getElementById('s-today-rd').textContent    = d.todayReadings;
+    document.getElementById('s-members').textContent     = d.members;
+    document.getElementById('s-total-rd').textContent    = d.totalReadings;
+
+    // Quick pie preview on dashboard
+    const cd = await api('GET', '/api/admin/category-stats?days=30');
+    renderDashCatPreview(cd);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+function renderDashCatPreview(cd) {
+  const el = document.getElementById('dash-cat-preview');
+  if (!cd.rows || !cd.rows.length) { el.innerHTML = '<span style="color:var(--text3);font-size:.8rem">暂无数据</span>'; return; }
+  el.innerHTML = cd.rows.map(r => {
+    const pct = cd.total ? Math.round(r.total / cd.total * 100) : 0;
+    const color = CAT_COLORS[r.category] || '#a888e8';
+    return `
+      <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:.5rem">
+        <span style="width:52px;font-size:.8rem;color:var(--text2)">${r.category}</span>
+        <div style="flex:1;background:var(--bg3);border-radius:4px;height:8px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${color};border-radius:4px;transition:width .6s"></div>
+        </div>
+        <span style="width:60px;font-size:.78rem;color:var(--text3);text-align:right">${r.total} 次 (${pct}%)</span>
+      </div>`;
+  }).join('');
+}
+
+// ─── Users ───────────────────────────────────────────
+async function loadUsers(page) {
+  S.userPage = page;
+  const search = document.getElementById('user-search').value.trim();
+  const tbody = document.getElementById('users-tbody');
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:1.5rem">加载中…</td></tr>';
+  try {
+    const d = await api('GET', `/api/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
+    if (!d.list || !d.list.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:1.5rem">暂无用户</td></tr>';
+    } else {
+      tbody.innerHTML = d.list.map(u => {
+        const isMember = !!u.is_member;
+        const expires = u.member_expires_at ? new Date(u.member_expires_at) : null;
+        const isExpired = expires && expires < new Date();
+        const statusBadge = isMember && !isExpired
+          ? '<span class="badge badge-member">⭐ 星渊会员</span>'
+          : '<span class="badge badge-free">免费用户</span>';
+        const usageText = isMember && !isExpired
+          ? `${u.month_uses || 0} / 30`
+          : `${u.free_uses || 0} 次剩余`;
+        const expiresText = (isMember && expires)
+          ? `<span style="color:${isExpired ? 'var(--red)' : 'var(--green)'}">${expires.toLocaleDateString('zh-CN')}${isExpired ? ' (已过期)' : ''}</span>`
+          : '—';
+        return `
+          <tr>
+            <td style="color:var(--text3)">#${u.id}</td>
+            <td style="color:var(--text)">${esc(u.username)}</td>
+            <td>${statusBadge}</td>
+            <td>${usageText}</td>
+            <td>${expiresText}</td>
+            <td style="color:var(--text3)">${(u.created_at || '').slice(0, 10)}</td>
+            <td>
+              <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+                <button class="btn btn-success btn-sm" onclick="openGrantModal(${u.id},'${esc(u.username)}')">发放会员</button>
+                ${isMember ? `<button class="btn btn-danger btn-sm" onclick="revokeConfirm(${u.id},'${esc(u.username)}')">取消会员</button>` : ''}
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+    renderUserPagination(page, Math.ceil(d.total / 20), d.total);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);text-align:center;padding:1rem">${err.message}</td></tr>`;
+  }
+}
+
+function renderUserPagination(page, pages, total) {
+  const el = document.getElementById('users-pagination');
+  if (pages <= 1) { el.innerHTML = `<span style="font-size:.75rem;color:var(--text3)">共 ${total} 条</span>`; return; }
+  let html = `<span style="font-size:.75rem;color:var(--text3);margin-right:.4rem">共 ${total} 条</span>`;
+  html += `<button class="pager" onclick="loadUsers(${page-1})" ${page<=1?'disabled':''}>‹</button>`;
+  for (let i = Math.max(1, page-2); i <= Math.min(pages, page+2); i++) {
+    html += `<button class="pager ${i===page?'active':''}" onclick="loadUsers(${i})">${i}</button>`;
+  }
+  html += `<button class="pager" onclick="loadUsers(${page+1})" ${page>=pages?'disabled':''}>›</button>`;
+  el.innerHTML = html;
+}
+
+// ─── Modal helpers ────────────────────────────────────
+function openGrantModal(userId, username) {
+  S.modalAction = 'grant';
+  S.modalUserId = userId;
+  document.getElementById('modal-title').textContent = `发放星渊会员 · ${username}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="fgroup" style="margin-bottom:0">
+      <label style="color:var(--text2);font-size:.8rem;display:block;margin-bottom:.4rem">发放时长（月）</label>
+      <input type="number" id="modal-months" class="form-input" value="1" min="1" max="24" style="width:100px">
+      <p style="font-size:.72rem;color:var(--text3);margin-top:.4rem">若用户已有会员，有效期将顺延</p>
+    </div>`;
+  document.getElementById('modal-confirm-btn').textContent = '确认发放';
+  document.getElementById('modal-confirm-btn').className = 'btn btn-gold';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function revokeConfirm(userId, username) {
+  S.modalAction = 'revoke';
+  S.modalUserId = userId;
+  document.getElementById('modal-title').textContent = `取消会员 · ${username}`;
+  document.getElementById('modal-body').innerHTML = `
+    <p style="color:var(--text2);font-size:.85rem">确认取消 <strong style="color:var(--text)">${esc(username)}</strong> 的星渊会员资格？<br><span style="color:var(--text3);font-size:.78rem">操作立即生效，不可撤销。</span></p>`;
+  document.getElementById('modal-confirm-btn').textContent = '确认取消';
+  document.getElementById('modal-confirm-btn').className = 'btn btn-danger';
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.remove('show');
+  S.modalAction = null; S.modalUserId = null;
+}
+
+async function modalConfirm() {
+  if (!S.modalAction || !S.modalUserId) return;
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.disabled = true;
+  try {
+    const body = { action: S.modalAction };
+    if (S.modalAction === 'grant') {
+      body.months = parseInt(document.getElementById('modal-months')?.value) || 1;
+    }
+    const data = await api('POST', `/api/admin/users/${S.modalUserId}/member`, body);
+    toast(data.message, 'ok');
+    document.getElementById('modal-overlay').classList.remove('show');
+    loadUsers(S.userPage);
+  } catch (err) {
+    toast(err.message, 'err');
+  } finally { btn.disabled = false; }
+}
+
+// ─── Invites ──────────────────────────────────────────
+async function loadInvites() {
+  const tbody = document.getElementById('invites-tbody');
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1.5rem">加载中…</td></tr>';
+  try {
+    const rows = await api('GET', '/api/admin/invites');
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1.5rem">暂无邀请码，点击上方按钮生成</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const used = !!r.used_by_name;
+      return `<tr>
+        <td style="font-family:monospace;color:var(--gold-lt)">${r.code}</td>
+        <td>${used ? '<span class="badge badge-used">已使用</span>' : '<span class="badge badge-unused">未使用</span>'}</td>
+        <td>${used ? esc(r.used_by_name) : '—'}</td>
+        <td style="color:var(--text3)">${used ? (r.used_at||'').slice(0,16) : '—'}</td>
+        <td style="color:var(--text3)">${(r.created_at||'').slice(0,16)}</td>
+        <td>${!used ? `<button class="btn btn-danger btn-sm" onclick="deleteCode(${r.id})">删除</button>` : ''}</td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);text-align:center;padding:1rem">${err.message}</td></tr>`;
+  }
+}
+
+async function genCodes() {
+  const count = parseInt(document.getElementById('inv-count').value) || 1;
+  try {
+    const data = await api('POST', '/api/admin/invites', { count });
+    const box = document.getElementById('new-codes-box');
+    const list = document.getElementById('new-codes-list');
+    list.innerHTML = data.codes.map(c =>
+      `<div class="code-item" onclick="copyText('${c}',this)">${c}<span style="font-size:.65rem;color:var(--text3)">点击复制</span></div>`
+    ).join('');
+    box.style.display = 'block';
+    toast(`已生成 ${data.codes.length} 个邀请码`, 'ok');
+    loadInvites();
+  } catch (err) { toast(err.message, 'err'); }
+}
+
+async function deleteCode(id) {
+  if (!confirm('确认删除该邀请码？')) return;
+  try {
+    await api('DELETE', `/api/admin/invites/${id}`);
+    toast('已删除', 'ok');
+    loadInvites();
+  } catch (err) { toast(err.message, 'err'); }
+}
+
+function copyText(text, el) {
+  navigator.clipboard.writeText(text).then(() => {
+    if (el) { const orig = el.innerHTML; el.style.borderColor = 'var(--green)'; setTimeout(() => el.style.borderColor = '', 800); }
+    toast('已复制: ' + text, 'ok');
+  }).catch(() => toast('复制失败，请手动复制', 'err'));
+}
+
+function copyAllCodes() {
+  const codes = Array.from(document.querySelectorAll('#new-codes-list .code-item'))
+    .map(el => el.firstChild.textContent.trim()).join('\n');
+  navigator.clipboard.writeText(codes).then(() => toast('全部邀请码已复制', 'ok'))
+    .catch(() => toast('复制失败', 'err'));
+}
+
+// ─── Category Stats ────────────────────────────────────
+async function loadCatStats() {
+  const days = document.getElementById('days-select').value;
+  try {
+    const [summary, daily] = await Promise.all([
+      api('GET', `/api/admin/category-stats?days=${days}`),
+      api('GET', `/api/admin/category-stats/daily?days=${Math.min(days, 14)}`),
+    ]);
+    renderPieChart(summary);
+    renderCatTable(summary);
+    renderDailyTable(daily);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+function renderPieChart(cd) {
+  const el = document.getElementById('pie-container');
+  if (!cd.rows || !cd.rows.length || cd.total === 0) {
+    el.innerHTML = '<span style="color:var(--text3);font-size:.8rem">暂无数据</span>'; return;
+  }
+
+  // SVG pie chart
+  const size = 140, cx = 70, cy = 70, r = 58, gap = 0.02;
+  let angle = -Math.PI / 2;
+  const slices = cd.rows.map(row => {
+    const frac = row.total / cd.total;
+    const start = angle;
+    angle += frac * Math.PI * 2;
+    return { ...row, frac, start, end: angle, color: CAT_COLORS[row.category] || '#a888e8' };
+  });
+
+  function polarToXY(a, radius) {
+    return [cx + Math.cos(a) * radius, cy + Math.sin(a) * radius];
+  }
+
+  const paths = slices.map(s => {
+    if (s.frac >= 0.999) {
+      return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${s.color}" opacity=".85"/>`;
+    }
+    const startAdj = s.start + gap;
+    const endAdj   = s.end   - gap;
+    const [x1, y1] = polarToXY(startAdj, r);
+    const [x2, y2] = polarToXY(endAdj,   r);
+    const large = (s.end - s.start) > Math.PI ? 1 : 0;
+    return `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large},1 ${x2},${y2} Z" fill="${s.color}" opacity=".85"/>`;
+  }).join('');
+
+  const legend = slices.map(s => `
+    <div class="pie-legend-item">
+      <span class="pie-dot" style="background:${s.color}"></span>
+      <span>${s.category}</span>
+      <span style="color:var(--text3);margin-left:auto">${s.total} (${Math.round(s.frac*100)}%)</span>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex-shrink:0">
+      <circle cx="${cx}" cy="${cy}" r="${r+2}" fill="var(--bg3)"/>
+      ${paths}
+      <circle cx="${cx}" cy="${cy}" r="28" fill="var(--bg2)"/>
+      <text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="11" fill="var(--text3)" font-family="PingFang SC,sans-serif">${cd.total}次</text>
+    </svg>
+    <div class="pie-legend">${legend}</div>`;
+}
+
+function renderCatTable(cd) {
+  const el = document.getElementById('cat-table-wrap');
+  if (!cd.rows || !cd.rows.length) { el.innerHTML = '<span style="color:var(--text3);font-size:.8rem">暂无数据</span>'; return; }
+  el.innerHTML = `
+    <table style="width:100%">
+      <thead><tr>
+        <th style="text-align:left;padding:.4rem .5rem;font-size:.72rem;color:var(--text3)">分类</th>
+        <th style="text-align:right;padding:.4rem .5rem;font-size:.72rem;color:var(--text3)">次数</th>
+        <th style="text-align:right;padding:.4rem .5rem;font-size:.72rem;color:var(--text3)">占比</th>
+      </tr></thead>
+      <tbody>
+        ${cd.rows.map(r => {
+          const pct = cd.total ? Math.round(r.total / cd.total * 100) : 0;
+          const color = CAT_COLORS[r.category] || '#a888e8';
+          return `<tr>
+            <td style="padding:.4rem .5rem">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:.4rem"></span>
+              <span style="color:var(--text)">${r.category}</span>
+            </td>
+            <td style="text-align:right;padding:.4rem .5rem;color:var(--gold-lt)">${r.total}</td>
+            <td style="text-align:right;padding:.4rem .5rem;color:var(--text3)">${pct}%</td>
+          </tr>`;
+        }).join('')}
+        <tr style="border-top:1px solid var(--border)">
+          <td style="padding:.4rem .5rem;color:var(--text3);font-size:.75rem">合计</td>
+          <td style="text-align:right;padding:.4rem .5rem;color:var(--text2)">${cd.total}</td>
+          <td style="text-align:right;padding:.4rem .5rem;color:var(--text3)">100%</td>
+        </tr>
+      </tbody>
+    </table>`;
+}
+
+function renderDailyTable(rows) {
+  const el = document.getElementById('daily-table-wrap');
+  if (!rows || !rows.length) { el.innerHTML = '<span style="color:var(--text3);font-size:.8rem">暂无数据</span>'; return; }
+
+  // Group by date
+  const byDate = {};
+  const cats = new Set();
+  rows.forEach(r => {
+    if (!byDate[r.date]) byDate[r.date] = {};
+    byDate[r.date][r.category] = r.count;
+    cats.add(r.category);
+  });
+  const catList = ['感情','事业','财运','健康','其他'].filter(c => cats.has(c));
+  const dates = Object.keys(byDate).sort().reverse();
+
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+    <table style="width:100%;min-width:400px">
+      <thead><tr>
+        <th style="text-align:left;padding:.4rem .6rem;font-size:.72rem;color:var(--text3)">日期</th>
+        ${catList.map(c => `<th style="text-align:right;padding:.4rem .6rem;font-size:.72rem;color:${CAT_COLORS[c]||'var(--text3)'}">${c}</th>`).join('')}
+        <th style="text-align:right;padding:.4rem .6rem;font-size:.72rem;color:var(--text3)">合计</th>
+      </tr></thead>
+      <tbody>
+        ${dates.map(d => {
+          const row = byDate[d];
+          const total = Object.values(row).reduce((a,b) => a+b, 0);
+          return `<tr>
+            <td style="padding:.35rem .6rem;color:var(--text2);font-size:.8rem">${d}</td>
+            ${catList.map(c => `<td style="text-align:right;padding:.35rem .6rem;font-size:.8rem;color:var(--text2)">${row[c] || 0}</td>`).join('')}
+            <td style="text-align:right;padding:.35rem .6rem;font-size:.8rem;color:var(--gold-lt)">${total}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    </div>`;
+}
+
+// ─── Util ─────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Init ─────────────────────────────────────────────
+(function init() {
+  if (S.token) {
+    // Verify token
+    api('GET', '/api/admin/stats').then(() => {
+      // token valid
+      try { S.username = JSON.parse(atob(S.token.split('.')[1])).username || 'admin'; } catch {}
+      showApp();
+    }).catch(() => {
+      S.token = '';
+      localStorage.removeItem('xj_admin_token');
+    });
+  }
+})();
+</script>
+</body>
+</html>

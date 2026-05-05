@@ -1,0 +1,12 @@
+run = "node server.js"
+entrypoint = "server.js"
+
+[nix]
+channel = "stable-23_11"
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[env]
+PORT = "3000"
