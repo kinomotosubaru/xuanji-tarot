@@ -389,6 +389,102 @@ app.post('/api/read', authMiddleware, async (req, res) => {
   }
 });
 
+// ─── New UI Routes (五窗口分形推演) ────────────────────────────────────────────
+const SYS_PROMPT_FRACTAL = `你是一位深谙"分形结构语法"的塔罗推演者。不依赖牌意书或关键词库，只基于位置逻辑与过程语法推演。
+
+# 规则
+## 四个中性过程
+- 水（圣杯）：内在孕育，边界内部酝酿
+- 土（星币）：向外成形，推出痕迹
+- 火（权杖）：已存在的内容
+- 风（宝剑）：内容回流
+水→土→火→风→水，闭合圆。
+
+## 大阿尔卡纳
+11号力量为中轴。1-5水，6-10土，12-16火，17-21风。0愚者圆外。韦特编号（8=正义，11=力量）。
+
+## 小阿尔卡纳三层坐标
+花色=过程。2-3水组，4-5土组，6-7火组，8-9风组。
+
+## 宫廷牌
+国王=火风格，王后=水风格，骑士=风风格，侍卫=土风格。
+
+## 正逆位
+正位=外面，逆位=内面。不改坐标改观察角度。
+
+# 禁令
+- 禁止传统牌意关键词
+- 禁止引用牌意书
+- 只从结构坐标推导
+- 语言具体深刻
+
+# 输出格式
+每张牌：
+### 【窗口名】牌名（正位/逆位）
+**结构坐标**：位置描述
+**过程信号**：中性结构描述
+**情境翻译**：结合问题的深度解读
+---
+最后：
+## 综合洞察
+串联所有窗口的完整图景。结构清晰，洞察犀利。`;
+
+app.post('/api/reading', authMiddleware, async (req, res) => {
+  const { question, cards_info } = req.body || {};
+  if (!question || question.trim().length < 2) return res.status(400).json({ error: '请输入你的问题（至少2个字）' });
+  if (!cards_info) return res.status(400).json({ error: '缺少牌阵信息' });
+  if (!DEEPSEEK_API_KEY) return res.status(500).json({ error: '服务未配置API Key' });
+
+  const u = req.dbUser;
+  const remaining = getRemainingUses(u);
+  if (remaining <= 0) return res.status(403).json({ error: 'NO_USES', message: '推演次数已用完' });
+
+  const category = classifyQuestion(question.trim());
+  try {
+    const result = await callDeepSeek([
+      { role: 'system', content: SYS_PROMPT_FRACTAL },
+      { role: 'user', content: `问题：${question.trim()}\n\n牌阵：五窗口结构采样\n${cards_info}\n\n请按格式推演。` },
+    ]);
+
+    consumeUse(u.id);
+    recordCategoryStat(category);
+
+    const insertResult = db.prepare(
+      'INSERT INTO readings (user_id, question, cards, result, category) VALUES (?,?,?,?,?)'
+    ).run(u.id, question.trim(), cards_info, result, category);
+
+    const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+    res.json({ reading: result, id: insertResult.lastInsertRowid, remaining_uses: getRemainingUses(freshUser) });
+  } catch (err) {
+    console.error('Reading error:', err.message);
+    res.status(500).json({ error: '推演服务暂时不可用，请稍后再试' });
+  }
+});
+
+app.post('/api/followup', authMiddleware, async (req, res) => {
+  const { messages } = req.body || {};
+  if (!Array.isArray(messages) || !messages.length) return res.status(400).json({ error: '缺少对话内容' });
+  if (!DEEPSEEK_API_KEY) return res.status(500).json({ error: '服务未配置API Key' });
+
+  const u = req.dbUser;
+  const remaining = getRemainingUses(u);
+  if (remaining <= 0) return res.status(403).json({ error: 'NO_USES', message: '推演次数已用完' });
+
+  const sysFollowup = SYS_PROMPT_FRACTAL + '\n\n现在用户在追问。基于同一次推演的上下文回答，保持结构语法框架，语言简洁直接。不要重复已经说过的内容，直接回答新问题。';
+  try {
+    const reply = await callDeepSeek([
+      { role: 'system', content: sysFollowup },
+      ...messages,
+    ]);
+    consumeUse(u.id);
+    const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+    res.json({ reply, remaining_uses: getRemainingUses(freshUser) });
+  } catch (err) {
+    console.error('Followup error:', err.message);
+    res.status(500).json({ error: '追问服务暂时不可用，请稍后再试' });
+  }
+});
+
 // ─── History Routes ────────────────────────────────────────────────────────────
 app.get('/api/history', authMiddleware, (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
