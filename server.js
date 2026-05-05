@@ -65,6 +65,9 @@ db.exec(`
   );
 `);
 
+// migration: add note column if not exists
+try { db.exec(`ALTER TABLE users ADD COLUMN note TEXT DEFAULT NULL`); } catch(_) {}
+
 // seed admin
 const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
 if (!adminExists) {
@@ -445,7 +448,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   const offset = (page - 1) * limit;
   const like   = `%${search}%`;
   const rows = db.prepare(
-    'SELECT id, username, is_member, member_expires_at, free_uses, month_uses, month_reset_at, created_at FROM users WHERE is_admin = 0 AND username LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?'
+    'SELECT id, username, note, is_member, member_expires_at, free_uses, month_uses, month_reset_at, created_at FROM users WHERE is_admin = 0 AND username LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?'
   ).all(like, limit, offset);
   const total = db.prepare('SELECT COUNT(*) as c FROM users WHERE is_admin = 0 AND username LIKE ?').get(like).c;
   res.json({ list: rows, total });
@@ -523,24 +526,27 @@ app.get('/api/admin/category-stats/daily', authMiddleware, adminMiddleware, (req
   res.json(rows);
 });
 
+app.put('/api/admin/users/:id/note', authMiddleware, adminMiddleware, (req, res) => {
+  const { note } = req.body || {};
+  const user = db.prepare('SELECT id FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
+  if (!user) return res.status(404).json({ error: '用户不存在' });
+  db.prepare('UPDATE users SET note = ? WHERE id = ?').run((note || '').trim() || null, user.id);
+  res.json({ message: '备注已保存' });
+});
+
 app.get('/api/admin/questions', authMiddleware, adminMiddleware, (req, res) => {
-  const { category, username } = req.query;
-  let sql, params;
-  if (username) {
-    sql = `SELECT r.id, r.question, r.category, r.created_at, u.username
-           FROM readings r JOIN users u ON r.user_id = u.id
-           WHERE u.username LIKE ? ORDER BY r.id DESC LIMIT 200`;
-    params = [`%${username}%`];
-  } else if (category) {
-    sql = `SELECT r.id, r.question, r.category, r.created_at, u.username
-           FROM readings r JOIN users u ON r.user_id = u.id
-           WHERE r.category = ? ORDER BY r.id DESC LIMIT 200`;
-    params = [category];
-  } else {
-    return res.status(400).json({ error: '需要指定 category 或 username' });
-  }
-  const rows = db.prepare(sql).all(...params);
-  res.json(rows);
+  const { category, username, start_date, end_date } = req.query;
+  const conditions = [];
+  const params = [];
+  if (username) { conditions.push('u.username LIKE ?'); params.push(`%${username}%`); }
+  if (category) { conditions.push('r.category = ?'); params.push(category); }
+  if (start_date) { conditions.push("date(r.created_at) >= ?"); params.push(start_date); }
+  if (end_date) { conditions.push("date(r.created_at) <= ?"); params.push(end_date); }
+  if (!conditions.length) return res.status(400).json({ error: '需要至少一个筛选条件' });
+  const sql = `SELECT r.id, r.question, r.category, r.created_at, u.username
+               FROM readings r JOIN users u ON r.user_id = u.id
+               WHERE ${conditions.join(' AND ')} ORDER BY r.id DESC LIMIT 200`;
+  res.json(db.prepare(sql).all(...params));
 });
 
 app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {

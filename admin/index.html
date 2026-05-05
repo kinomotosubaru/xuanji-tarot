@@ -237,7 +237,7 @@ tr:hover td{background:rgba(32,30,64,.4)}
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>ID</th><th>用户名</th><th>状态</th><th>剩余/本月用量</th><th>到期时间</th><th>注册时间</th><th>操作</th>
+              <th>ID</th><th>用户名 / 备注</th><th>状态</th><th>剩余/本月用量</th><th>到期时间</th><th>注册时间</th><th>操作</th>
             </tr></thead>
             <tbody id="users-tbody">
               <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:2rem">加载中…</td></tr>
@@ -333,10 +333,32 @@ tr:hover td{background:rgba(32,30,64,.4)}
 
         <!-- User query -->
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
-          <h3 style="font-size:.85rem;color:var(--text2);margin-bottom:.8rem">按用户查询提问</h3>
-          <div style="display:flex;gap:.5rem;margin-bottom:.8rem">
-            <input id="q-username" class="form-input" placeholder="输入用户名（支持模糊搜索）" style="flex:1;padding:.35rem .6rem;font-size:.82rem">
-            <button class="btn btn-outline btn-sm" onclick="searchUserQuestions()">查询</button>
+          <h3 style="font-size:.85rem;color:var(--text2);margin-bottom:.8rem">提问查询</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:.5rem;align-items:end;margin-bottom:.8rem">
+            <div>
+              <label style="font-size:.72rem;color:var(--text3);display:block;margin-bottom:.2rem">用户名</label>
+              <input id="q-username" class="form-input" placeholder="模糊搜索" style="width:100%;padding:.35rem .6rem;font-size:.82rem">
+            </div>
+            <div>
+              <label style="font-size:.72rem;color:var(--text3);display:block;margin-bottom:.2rem">分类</label>
+              <select id="q-category" class="form-input" style="width:100%;padding:.35rem .6rem;font-size:.82rem">
+                <option value="">全部</option>
+                <option value="感情">感情</option>
+                <option value="事业">事业</option>
+                <option value="财运">财运</option>
+                <option value="健康">健康</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:.72rem;color:var(--text3);display:block;margin-bottom:.2rem">开始日期</label>
+              <input type="date" id="q-start" class="form-input" style="width:100%;padding:.35rem .6rem;font-size:.82rem">
+            </div>
+            <div>
+              <label style="font-size:.72rem;color:var(--text3);display:block;margin-bottom:.2rem">结束日期</label>
+              <input type="date" id="q-end" class="form-input" style="width:100%;padding:.35rem .6rem;font-size:.82rem">
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="searchUserQuestions()" style="align-self:end">查询</button>
           </div>
           <div id="user-questions-wrap"></div>
         </div>
@@ -504,7 +526,14 @@ async function loadUsers(page) {
         return `
           <tr>
             <td style="color:var(--text3)">#${u.id}</td>
-            <td style="color:var(--text)">${esc(u.username)}</td>
+            <td>
+              <div style="font-weight:500;color:var(--text)">${esc(u.username)}</div>
+              <div id="note-cell-${u.id}" onclick="editNote(${u.id},'${esc(u.note || '')}')" style="cursor:pointer;margin-top:.15rem">
+                ${u.note
+                  ? `<span style="font-size:.72rem;color:var(--text2)">${esc(u.note)}</span>`
+                  : `<span style="font-size:.72rem;color:var(--text3)">点击添加备注</span>`}
+              </div>
+            </td>
             <td>${statusBadge}</td>
             <td>${usageText}</td>
             <td>${expiresText}</td>
@@ -766,12 +795,20 @@ async function loadCatDetail(category) {
 }
 
 async function searchUserQuestions() {
-  const username = document.getElementById('q-username').value.trim();
+  const username  = document.getElementById('q-username').value.trim();
+  const category  = document.getElementById('q-category').value;
+  const start     = document.getElementById('q-start').value;
+  const end       = document.getElementById('q-end').value;
   const wrap = document.getElementById('user-questions-wrap');
-  if (!username) { wrap.innerHTML = '<span style="color:var(--text3);font-size:.8rem">请输入用户名</span>'; return; }
+  const qs = new URLSearchParams();
+  if (username) qs.set('username', username);
+  if (category) qs.set('category', category);
+  if (start)    qs.set('start_date', start);
+  if (end)      qs.set('end_date', end);
+  if (!qs.toString()) { wrap.innerHTML = '<span style="color:var(--text3);font-size:.8rem">请至少填写一个筛选条件</span>'; return; }
   wrap.innerHTML = '<span style="color:var(--text3);font-size:.8rem">加载中…</span>';
   try {
-    const rows = await api('GET', `/api/admin/questions?username=${encodeURIComponent(username)}`);
+    const rows = await api('GET', `/api/admin/questions?${qs}`);
     renderQuestionsTable(wrap, rows);
   } catch (err) {
     wrap.innerHTML = `<span style="color:var(--red);font-size:.8rem">${err.message}</span>`;
@@ -804,6 +841,32 @@ async function deleteUser(id, username) {
   try {
     await api('DELETE', `/api/admin/users/${id}`);
     toast(`用户 ${username} 已删除`);
+    loadUsers(S.userPage || 1);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+}
+
+function editNote(id, currentNote) {
+  const cell = document.getElementById(`note-cell-${id}`);
+  cell.onclick = null;
+  cell.innerHTML = `
+    <div style="display:flex;gap:.3rem;align-items:center" onclick="event.stopPropagation()">
+      <input id="note-input-${id}" class="form-input" value="${esc(currentNote)}"
+        style="flex:1;padding:.2rem .4rem;font-size:.75rem;min-width:80px" maxlength="100"
+        onkeydown="if(event.key==='Enter')saveNote(${id});if(event.key==='Escape')loadUsers(S.userPage||1)">
+      <button class="btn btn-success btn-sm" onclick="saveNote(${id})">✓</button>
+      <button class="btn btn-outline btn-sm" onclick="loadUsers(S.userPage||1)">✕</button>
+    </div>`;
+  document.getElementById(`note-input-${id}`).focus();
+}
+
+async function saveNote(id) {
+  const input = document.getElementById(`note-input-${id}`);
+  const note = input ? input.value.trim() : '';
+  try {
+    await api('PUT', `/api/admin/users/${id}/note`, { note });
+    toast('备注已保存');
     loadUsers(S.userPage || 1);
   } catch (err) {
     toast(err.message, 'err');
