@@ -528,7 +528,8 @@ async function loadUsers(page) {
             <td style="color:var(--text3)">#${u.id}</td>
             <td>
               <div style="font-weight:500;color:var(--text)">${esc(u.username)}</div>
-              <div id="note-cell-${u.id}" onclick="editNote(${u.id},'${esc(u.note || '')}')" style="cursor:pointer;margin-top:.15rem">
+              ${u.invited_by ? `<div style="margin-top:.1rem"><span style="font-size:.68rem;color:var(--text3)">邀请码：</span><span style="font-size:.68rem;color:var(--gold-dim);font-family:monospace">${esc(u.invited_by)}</span></div>` : ''}
+              <div id="note-cell-${u.id}" onclick="editNote(${u.id},'${esc(u.note || '')}')" style="cursor:pointer;margin-top:.1rem">
                 ${u.note
                   ? `<span style="font-size:.72rem;color:var(--text2)">${esc(u.note)}</span>`
                   : `<span style="font-size:.72rem;color:var(--text3)">点击添加备注</span>`}

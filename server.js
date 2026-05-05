@@ -67,6 +67,8 @@ db.exec(`
 
 // migration: add note column if not exists
 try { db.exec(`ALTER TABLE users ADD COLUMN note TEXT DEFAULT NULL`); } catch(_) {}
+// migration: add invited_by column if not exists
+try { db.exec(`ALTER TABLE users ADD COLUMN invited_by TEXT DEFAULT NULL`); } catch(_) {}
 
 // seed admin
 const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
@@ -275,32 +277,33 @@ function consumeUse(userId) {
 
 // ─── Auth Routes ───────────────────────────────────────────────────────────────
 app.post('/api/register', (req, res) => {
-  const { username, password, invite_code } = req.body || {};
-  if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
-  if (username.length < 2 || username.length > 20) return res.status(400).json({ error: '用户名长度2-20位' });
-  if (password.length < 6) return res.status(400).json({ error: '密码至少6位' });
+  try {
+    const { username, password, invite_code } = req.body || {};
+    if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
+    if (username.length < 2 || username.length > 20) return res.status(400).json({ error: '用户名长度2-20位' });
+    if (password.length < 6) return res.status(400).json({ error: '密码至少6位' });
+    if (!invite_code || !invite_code.trim()) return res.status(400).json({ error: '请输入邀请码' });
 
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
-  if (existing) return res.status(400).json({ error: '用户名已存在' });
+    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    if (existing) return res.status(400).json({ error: '用户名已存在' });
 
-  let inviteRecord = null;
-  if (invite_code && invite_code.trim()) {
-    inviteRecord = db.prepare('SELECT * FROM invite_codes WHERE code = ? AND used_by IS NULL').get(invite_code.trim());
+    const inviteRecord = db.prepare('SELECT * FROM invite_codes WHERE code = ? AND used_by IS NULL').get(invite_code.trim());
     if (!inviteRecord) return res.status(400).json({ error: '邀请码无效或已被使用' });
-  }
 
-  const hash = bcrypt.hashSync(password, 10);
-  const result = db.prepare(
-    'INSERT INTO users (username, password_hash, invite_code_used) VALUES (?, ?, ?)'
-  ).run(username, hash, invite_code?.trim() || null);
+    const hash = bcrypt.hashSync(password, 10);
+    const result = db.prepare(
+      'INSERT INTO users (username, password_hash, invite_code_used, invited_by) VALUES (?, ?, ?, ?)'
+    ).run(username, hash, invite_code.trim(), invite_code.trim());
 
-  if (inviteRecord) {
     db.prepare('UPDATE invite_codes SET used_by = ?, used_at = datetime("now","localtime") WHERE id = ?')
       .run(result.lastInsertRowid, inviteRecord.id);
-  }
 
-  const token = jwt.sign({ id: result.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, username, is_admin: false, is_member: false, remaining_uses: 3 });
+    const token = jwt.sign({ id: result.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ token, username, is_admin: false, is_member: false, remaining_uses: 3 });
+  } catch (err) {
+    console.error('Register error:', err);
+    res.status(500).json({ error: '注册失败：' + (err.message || '服务器内部错误') });
+  }
 });
 
 app.post('/api/login', (req, res) => {
@@ -448,7 +451,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   const offset = (page - 1) * limit;
   const like   = `%${search}%`;
   const rows = db.prepare(
-    'SELECT id, username, note, is_member, member_expires_at, free_uses, month_uses, month_reset_at, created_at FROM users WHERE is_admin = 0 AND username LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?'
+    'SELECT id, username, note, invited_by, is_member, member_expires_at, free_uses, month_uses, month_reset_at, created_at FROM users WHERE is_admin = 0 AND username LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?'
   ).all(like, limit, offset);
   const total = db.prepare('SELECT COUNT(*) as c FROM users WHERE is_admin = 0 AND username LIKE ?').get(like).c;
   res.json({ list: rows, total });
