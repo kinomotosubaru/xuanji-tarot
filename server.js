@@ -287,13 +287,13 @@ app.post('/api/register', (req, res) => {
     const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
     if (existing) return res.status(400).json({ error: '用户名已存在' });
 
-    const inviteRecord = db.prepare('SELECT * FROM invite_codes WHERE code = ? AND used_by IS NULL').get(invite_code.trim());
+    const inviteRecord = db.prepare('SELECT * FROM invite_codes WHERE code = ? AND used_by IS NULL').get(invite_code.trim().toUpperCase());
     if (!inviteRecord) return res.status(400).json({ error: '邀请码无效或已被使用' });
 
     const hash = bcrypt.hashSync(password, 10);
     const result = db.prepare(
       'INSERT INTO users (username, password_hash, invite_code_used, invited_by) VALUES (?, ?, ?, ?)'
-    ).run(username, hash, invite_code.trim(), invite_code.trim());
+    ).run(username, hash, invite_code.trim().toUpperCase(), invite_code.trim().toUpperCase());
 
     db.prepare('UPDATE invite_codes SET used_by = ?, used_at = datetime("now","localtime") WHERE id = ?')
       .run(result.lastInsertRowid, inviteRecord.id);
@@ -488,10 +488,13 @@ app.get('/api/admin/invites', authMiddleware, adminMiddleware, (req, res) => {
 });
 
 app.post('/api/admin/invites', authMiddleware, adminMiddleware, (req, res) => {
+  const CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const count = Math.min(50, Math.max(1, parseInt(req.body?.count) || 1));
   const codes = [];
   for (let i = 0; i < count; i++) {
-    const code = 'XJ' + Math.random().toString(36).slice(2, 8).toUpperCase();
+    let suffix = '';
+    for (let j = 0; j < 6; j++) suffix += CHARSET[Math.floor(Math.random() * CHARSET.length)];
+    const code = 'XJ' + suffix;
     try {
       db.prepare('INSERT INTO invite_codes (code) VALUES (?)').run(code);
       codes.push(code);
