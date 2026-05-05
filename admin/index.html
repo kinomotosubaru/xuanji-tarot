@@ -321,6 +321,25 @@ tr:hover td{background:rgba(32,30,64,.4)}
             <div style="color:var(--text3);font-size:.8rem">加载中…</div>
           </div>
         </div>
+
+        <!-- Category drill-down -->
+        <div id="cat-detail-panel" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem">
+            <h3 style="font-size:.85rem;color:var(--text2)" id="cat-detail-title">分类明细</h3>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('cat-detail-panel').style.display='none'">✕ 关闭</button>
+          </div>
+          <div id="cat-detail-wrap"></div>
+        </div>
+
+        <!-- User query -->
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
+          <h3 style="font-size:.85rem;color:var(--text2);margin-bottom:.8rem">按用户查询提问</h3>
+          <div style="display:flex;gap:.5rem;margin-bottom:.8rem">
+            <input id="q-username" class="form-input" placeholder="输入用户名（支持模糊搜索）" style="flex:1;padding:.35rem .6rem;font-size:.82rem">
+            <button class="btn btn-outline btn-sm" onclick="searchUserQuestions()">查询</button>
+          </div>
+          <div id="user-questions-wrap"></div>
+        </div>
       </div>
     </section>
 
@@ -494,6 +513,7 @@ async function loadUsers(page) {
               <div style="display:flex;gap:.35rem;flex-wrap:wrap">
                 <button class="btn btn-success btn-sm" onclick="openGrantModal(${u.id},'${esc(u.username)}')">发放会员</button>
                 ${isMember ? `<button class="btn btn-danger btn-sm" onclick="revokeConfirm(${u.id},'${esc(u.username)}')">取消会员</button>` : ''}
+                <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${esc(u.username)}')">删除</button>
               </div>
             </td>
           </tr>`;
@@ -711,7 +731,7 @@ function renderCatTable(cd) {
         ${cd.rows.map(r => {
           const pct = cd.total ? Math.round(r.total / cd.total * 100) : 0;
           const color = CAT_COLORS[r.category] || '#a888e8';
-          return `<tr>
+          return `<tr style="cursor:pointer" onclick="loadCatDetail('${r.category}')">
             <td style="padding:.4rem .5rem">
               <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:.4rem"></span>
               <span style="color:var(--text)">${r.category}</span>
@@ -727,6 +747,67 @@ function renderCatTable(cd) {
         </tr>
       </tbody>
     </table>`;
+}
+
+async function loadCatDetail(category) {
+  const panel = document.getElementById('cat-detail-panel');
+  const title = document.getElementById('cat-detail-title');
+  const wrap = document.getElementById('cat-detail-wrap');
+  title.textContent = `「${category}」类提问明细（最近200条）`;
+  wrap.innerHTML = '<span style="color:var(--text3);font-size:.8rem">加载中…</span>';
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  try {
+    const rows = await api('GET', `/api/admin/questions?category=${encodeURIComponent(category)}`);
+    renderQuestionsTable(wrap, rows);
+  } catch (err) {
+    wrap.innerHTML = `<span style="color:var(--red);font-size:.8rem">${err.message}</span>`;
+  }
+}
+
+async function searchUserQuestions() {
+  const username = document.getElementById('q-username').value.trim();
+  const wrap = document.getElementById('user-questions-wrap');
+  if (!username) { wrap.innerHTML = '<span style="color:var(--text3);font-size:.8rem">请输入用户名</span>'; return; }
+  wrap.innerHTML = '<span style="color:var(--text3);font-size:.8rem">加载中…</span>';
+  try {
+    const rows = await api('GET', `/api/admin/questions?username=${encodeURIComponent(username)}`);
+    renderQuestionsTable(wrap, rows);
+  } catch (err) {
+    wrap.innerHTML = `<span style="color:var(--red);font-size:.8rem">${err.message}</span>`;
+  }
+}
+
+function renderQuestionsTable(el, rows) {
+  if (!rows || !rows.length) { el.innerHTML = '<span style="color:var(--text3);font-size:.8rem">暂无记录</span>'; return; }
+  el.innerHTML = `
+    <table style="width:100%;font-size:.78rem">
+      <thead><tr>
+        <th style="text-align:left;padding:.35rem .5rem;color:var(--text3)">用户</th>
+        <th style="text-align:left;padding:.35rem .5rem;color:var(--text3)">分类</th>
+        <th style="text-align:left;padding:.35rem .5rem;color:var(--text3)">提问内容</th>
+        <th style="text-align:right;padding:.35rem .5rem;color:var(--text3)">时间</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(r => `<tr>
+          <td style="padding:.35rem .5rem;color:var(--text2)">${esc(r.username)}</td>
+          <td style="padding:.35rem .5rem;color:var(--text3)">${esc(r.category)}</td>
+          <td style="padding:.35rem .5rem;color:var(--text)">${esc(r.question)}</td>
+          <td style="padding:.35rem .5rem;color:var(--text3);text-align:right;white-space:nowrap">${(r.created_at || '').slice(0, 10)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function deleteUser(id, username) {
+  if (!confirm(`确认删除用户「${username}」？此操作不可撤销，该用户的所有推演记录也将被删除。`)) return;
+  try {
+    await api('DELETE', `/api/admin/users/${id}`);
+    toast(`用户 ${username} 已删除`);
+    loadUsers(S.userPage || 1);
+  } catch (err) {
+    toast(err.message, 'err');
+  }
 }
 
 function renderDailyTable(rows) {

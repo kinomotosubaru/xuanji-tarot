@@ -523,6 +523,35 @@ app.get('/api/admin/category-stats/daily', authMiddleware, adminMiddleware, (req
   res.json(rows);
 });
 
+app.get('/api/admin/questions', authMiddleware, adminMiddleware, (req, res) => {
+  const { category, username } = req.query;
+  let sql, params;
+  if (username) {
+    sql = `SELECT r.id, r.question, r.category, r.created_at, u.username
+           FROM readings r JOIN users u ON r.user_id = u.id
+           WHERE u.username LIKE ? ORDER BY r.id DESC LIMIT 200`;
+    params = [`%${username}%`];
+  } else if (category) {
+    sql = `SELECT r.id, r.question, r.category, r.created_at, u.username
+           FROM readings r JOIN users u ON r.user_id = u.id
+           WHERE r.category = ? ORDER BY r.id DESC LIMIT 200`;
+    params = [category];
+  } else {
+    return res.status(400).json({ error: '需要指定 category 或 username' });
+  }
+  const rows = db.prepare(sql).all(...params);
+  res.json(rows);
+});
+
+app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
+  if (!user) return res.status(404).json({ error: '用户不存在' });
+  db.prepare('DELETE FROM readings WHERE user_id = ?').run(user.id);
+  db.prepare('UPDATE invite_codes SET used_by = NULL, used_at = NULL WHERE used_by = ?').run(user.id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+  res.json({ message: `用户 ${user.username} 已删除` });
+});
+
 // ─── SPA Fallback ──────────────────────────────────────────────────────────────
 app.get('/share/:token', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
