@@ -242,37 +242,13 @@ function adminMiddleware(req, res, next) {
 // ─── Usage Helpers ─────────────────────────────────────────────────────────────
 function getRemainingUses(user) {
   if (user.is_admin) return 9999;
-  if (user.is_member) {
-    const expires = user.member_expires_at ? new Date(user.member_expires_at) : null;
-    if (expires && expires > new Date()) {
-      const now = new Date();
-      const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      const resetAt = user.month_reset_at || '';
-      const used = resetAt.startsWith(monthKey) ? (user.month_uses || 0) : 0;
-      return Math.max(0, 30 - used);
-    }
-    // 会员已到期，当免费用户处理（免费次数可能已是0）
-  }
   return Math.max(0, user.free_uses || 0);
 }
 
 function consumeUse(userId) {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (user.is_admin) return;
-
-  if (user.is_member) {
-    const now = new Date();
-    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const resetAt = user.month_reset_at || '';
-    if (!resetAt.startsWith(monthKey)) {
-      db.prepare('UPDATE users SET month_uses = 1, month_reset_at = ? WHERE id = ?')
-        .run(monthKey, userId);
-    } else {
-      db.prepare('UPDATE users SET month_uses = month_uses + 1 WHERE id = ?').run(userId);
-    }
-  } else {
-    db.prepare('UPDATE users SET free_uses = MAX(0, free_uses - 1) WHERE id = ?').run(userId);
-  }
+  db.prepare('UPDATE users SET free_uses = MAX(0, free_uses - 1) WHERE id = ?').run(userId);
 }
 
 // ─── Auth Routes ───────────────────────────────────────────────────────────────
@@ -572,6 +548,17 @@ app.post('/api/admin/users/:id/member', authMiddleware, adminMiddleware, (req, r
   } else {
     res.status(400).json({ error: '无效的action' });
   }
+});
+
+app.post('/api/admin/users/:id/credits', authMiddleware, adminMiddleware, (req, res) => {
+  const { count } = req.body || {};
+  const n = Math.max(1, Math.min(9999, parseInt(count) || 0));
+  if (!n) return res.status(400).json({ error: '请输入有效次数（1-9999）' });
+  const user = db.prepare('SELECT * FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
+  if (!user) return res.status(404).json({ error: '用户不存在' });
+  db.prepare('UPDATE users SET free_uses = free_uses + ? WHERE id = ?').run(n, user.id);
+  const updated = db.prepare('SELECT free_uses FROM users WHERE id = ?').get(user.id);
+  res.json({ message: `已充值 ${n} 次，当前剩余 ${updated.free_uses} 次` });
 });
 
 app.get('/api/admin/invites', authMiddleware, adminMiddleware, (req, res) => {

@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@200;300;400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#060606;color:#ccc;font-family:'Noto Serif SC','Source Han Serif SC',Georgia,serif}
+html,body{height:100%;background:#0e0e0e;color:#ccc;font-family:'Noto Serif SC','Source Han Serif SC',Georgia,serif}
 ::placeholder{color:#333}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -21,8 +21,9 @@ textarea:focus,input:focus{outline:none}
 @keyframes pulse{0%,100%{opacity:0.3}50%{opacity:1}}
 
 #bg{position:fixed;inset:0;pointer-events:none;
-  background:radial-gradient(ellipse at 25% 15%,#0a0a12 0%,transparent 55%),
-             radial-gradient(ellipse at 75% 85%,#0a0808 0%,transparent 55%);
+  background:radial-gradient(ellipse at 25% 15%,#0d0d18 0%,transparent 55%),
+             radial-gradient(ellipse at 75% 85%,#120e0a 0%,transparent 55%),
+             radial-gradient(ellipse at 50% 50%,#0f0d0b 0%,transparent 70%);
   z-index:0}
 
 #nav{position:fixed;top:0;left:0;right:0;z-index:50;
@@ -30,10 +31,12 @@ textarea:focus,input:focus{outline:none}
   padding:14px 20px;
   background:linear-gradient(to bottom,rgba(6,6,6,0.95),rgba(6,6,6,0))}
 #nav.hidden{display:none}
-#nav-brand{background:transparent;border:none;color:#c8a87a66;
+#nav-brand{background:transparent;border:none;color:#c8a87a88;
   font-size:14px;letter-spacing:4px;cursor:pointer;font-family:'Noto Serif SC',serif}
-#nav-hist{background:transparent;border:none;color:#444;
+#nav-hist{background:transparent;border:none;color:#555;
   font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'Noto Serif SC',serif}
+#nav-uses{font-size:10px;color:#444;letter-spacing:1px;font-family:'Noto Serif SC',serif;
+  padding:3px 8px;border:0.5px solid #1a1a1a;border-radius:2px}
 
 .page{position:relative;z-index:1;min-height:100vh;
   display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px}
@@ -80,11 +83,11 @@ textarea:focus,input:focus{outline:none}
   transition:transform .9s cubic-bezier(0.4,0,0.15,1)}
 .card-inner.flipped{transform:rotateY(180deg)}
 .card-face{position:absolute;width:100%;height:100%;backface-visibility:hidden;border-radius:4px}
-.card-front-face{background:#080808;border:0.5px solid #222;
+.card-front-face{background:#111114;border:0.5px solid #252528;
   display:flex;align-items:center;justify-content:center}
-.card-front-inner{width:72%;height:78%;border:0.5px solid #1a1a1a;border-radius:2px;
+.card-front-inner{width:72%;height:78%;border:0.5px solid #252528;border-radius:2px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-.card-front-label{font-size:12px;color:#2a2a2a;letter-spacing:3px;font-family:'Noto Serif SC',serif}
+.card-front-label{font-size:12px;color:#383838;letter-spacing:3px;font-family:'Noto Serif SC',serif}
 .card-back-face{transform:rotateY(180deg);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:6px;position:relative}
@@ -99,7 +102,7 @@ textarea:focus,input:focus{outline:none}
 #loading-section{text-align:center;padding:40px 0;animation:fadeUp .4s ease}
 #loading-section.hidden{display:none}
 #load-bars{display:flex;justify-content:center;gap:5px;margin-bottom:20px}
-.load-bar{height:2px;background:#141414;border-radius:1px;transition:all .5s}
+.load-bar{height:2px;background:#1a1a1a;border-radius:1px;transition:all .5s}
 #load-step-text{font-size:11px;color:#444;letter-spacing:2px;font-family:'Noto Serif SC',serif}
 
 /* ── ERROR ────────────────────────────────────────────────────────── */
@@ -165,7 +168,7 @@ textarea:focus,input:focus{outline:none}
 .chat-msg.assistant{align-self:flex-start}
 .chat-bubble{padding:10px 14px;border:0.5px solid #1a1a1a}
 .chat-msg.user .chat-bubble{background:#1a1a2a;border-color:#2a2a3a;border-radius:12px 12px 2px 12px}
-.chat-msg.assistant .chat-bubble{background:#111;border-radius:12px 12px 12px 2px}
+.chat-msg.assistant .chat-bubble{background:#151518;border-radius:12px 12px 12px 2px}
 .chat-text{font-size:13px;line-height:1.8;white-space:pre-wrap}
 .chat-msg.user .chat-text{color:#aab}
 .chat-msg.assistant .chat-text{color:#aaa}
@@ -194,6 +197,19 @@ textarea:focus,input:focus{outline:none}
 #share-img{max-width:340px;max-height:70vh;border-radius:4px;border:0.5px solid #222}
 #share-btns{display:flex;gap:12px;margin-top:16px}
 #share-hint{font-size:10px;color:#444;margin-top:12px}
+/* ── PAY MODAL ────────────────────────────────────────────── */
+#pay-modal{position:fixed;inset:0;background:rgba(0,0,0,0.93);
+  display:flex;align-items:center;justify-content:center;z-index:220;animation:fadeIn .3s ease}
+#pay-modal.hidden{display:none}
+#pay-box{width:100%;max-width:380px;background:rgba(14,14,18,0.98);
+  border:0.5px solid #1e1e22;padding:36px 28px;position:relative;text-align:center}
+#pay-close{position:absolute;top:14px;right:18px;background:transparent;border:none;
+  color:#333;font-size:18px;cursor:pointer;line-height:1;padding:4px}
+#pay-close:hover{color:#666}
+.pay-qr-row{display:flex;justify-content:center;gap:24px;margin:24px 0 20px}
+.pay-qr-col{display:flex;flex-direction:column;align-items:center;gap:8px}
+.pay-qr-img{width:120px;height:120px;object-fit:cover;background:#111;border:0.5px solid #222}
+.pay-qr-label{font-size:10px;color:#555;letter-spacing:1px;font-family:'Noto Serif SC',serif}
 </style>
 </head>
 <body>
@@ -203,7 +219,10 @@ textarea:focus,input:focus{outline:none}
 <!-- NAV -->
 <nav id="nav" class="hidden">
   <button id="nav-brand" onclick="fullReset()">玄机</button>
-  <button id="nav-hist" onclick="openHistory()">推演记录</button>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span id="nav-uses"></span>
+    <button id="nav-hist" onclick="openHistory()">推演记录</button>
+  </div>
 </nav>
 
 <!-- AUTH OVERLAY -->
@@ -386,6 +405,32 @@ textarea:focus,input:focus{outline:none}
   <p id="share-hint">长按或右键保存图片 · 分享给朋友</p>
 </div>
 
+<!-- PAY MODAL -->
+<div id="pay-modal" class="hidden">
+  <div id="pay-box">
+    <button id="pay-close" onclick="closePayModal()">✕</button>
+    <p style="font-size:13px;color:#c8a87a;letter-spacing:2px;margin-bottom:6px;font-family:'Noto Serif SC',serif">次数不足</p>
+    <p style="font-size:11px;color:#555;letter-spacing:1px;margin-bottom:4px">推演与追问各消耗 1 次</p>
+    <p style="font-size:22px;color:#c8a87a;letter-spacing:2px;margin:18px 0 4px;font-family:'Noto Serif SC',serif">9.9 元</p>
+    <p style="font-size:11px;color:#888;letter-spacing:2px;margin-bottom:0">/ 30 次</p>
+    <div class="pay-qr-row">
+      <div class="pay-qr-col">
+        <img class="pay-qr-img" src="/images/pay-qr.png" alt="付款码">
+        <span class="pay-qr-label">微信扫码付款</span>
+      </div>
+      <div class="pay-qr-col">
+        <img class="pay-qr-img" src="/images/wechat-qr.png" alt="客服微信">
+        <span class="pay-qr-label">加微信发截图</span>
+      </div>
+    </div>
+    <p style="font-size:11px;color:#444;line-height:1.9;letter-spacing:.5px">
+      付款后截图，加右侧客服微信<br>
+      告知用户名 <strong id="pay-username" style="color:#888"></strong><br>
+      即可充值 30 次
+    </p>
+  </div>
+</div>
+
 <script>
 /* ═══════════════════════════════════════════
    DATA
@@ -429,6 +474,7 @@ let S = {
   shareImg: null,
   loadTimers: [],
   flipTimers: [],
+  remainingUses: null,
 };
 let TOKEN = localStorage.getItem('xuanji_token') || null;
 let USERNAME = localStorage.getItem('xuanji_username') || null;
@@ -467,6 +513,7 @@ async function doLogin(e){
     TOKEN=d.token;USERNAME=d.username;
     localStorage.setItem('xuanji_token',TOKEN);
     localStorage.setItem('xuanji_username',USERNAME);
+    updateUsesDisplay(d.remaining_uses);
     document.getElementById('auth-overlay').classList.add('hidden');
     showPage('ask');
     setTimeout(()=>document.getElementById('question-input').focus(),300);
@@ -487,6 +534,7 @@ async function doRegister(e){
     TOKEN=d.token;USERNAME=d.username;
     localStorage.setItem('xuanji_token',TOKEN);
     localStorage.setItem('xuanji_username',USERNAME);
+    updateUsesDisplay(d.remaining_uses);
     document.getElementById('auth-overlay').classList.add('hidden');
     showPage('ask');
     setTimeout(()=>document.getElementById('question-input').focus(),300);
@@ -514,10 +562,11 @@ async function apiCall(method,path,body,auth=true){
 /* ═══════════════════════════════════════════
    PAGE MANAGEMENT
    ═══════════════════════════════════════════ */
-function showPage(ph){
+function showPage(ph, push=true){
   S.phase=ph;
   ['intro','ask','reading'].forEach(p=>document.getElementById('p-'+p).classList.toggle('hidden',p!==ph));
   document.getElementById('nav').classList.toggle('hidden',ph==='intro');
+  if(push) history.pushState({page:ph},'');
 }
 
 function goAsk(){
@@ -618,6 +667,7 @@ function flipCard(idx){
 function startDraw(){
   if(!S.question.trim())return;
   if(!TOKEN){document.getElementById('auth-overlay').classList.remove('hidden');return;}
+  if(S.remainingUses !== null && S.remainingUses <= 0){openPayModal();return;}
   S.cards=drawCards(5);
   S.flipIdx=-1;
   S.reading='';
@@ -688,10 +738,12 @@ async function doReading(){
   try{
     const d=await apiCall('POST','/api/reading',{question:S.question.trim(),cards_info:info});
     S.reading=d.reading;
+    updateUsesDisplay(d.remaining_uses);
     stopLoadingUI();
     renderReading(d.reading);
   }catch(ex){
     stopLoadingUI();
+    if(ex.message==='NO_USES'){openPayModal();return;}
     S.error=ex.message||'推演失败';
     document.getElementById('error-msg').textContent=S.error;
     document.getElementById('error-section').classList.remove('hidden');
@@ -863,10 +915,12 @@ async function sendFollowUp(){
     const d=await apiCall('POST','/api/followup',{messages:history});
     const reply=d.reply||'回答失败';
     S.chatMsgs.push({role:'assistant',text:reply});
+    updateUsesDisplay(d.remaining_uses);
     thinking.classList.add('hidden');
     appendChatMsg('assistant',reply);
   }catch(ex){
     thinking.classList.add('hidden');
+    if(ex.message==='NO_USES'){closeFollowUp();openPayModal();S.chatLoading=false;return;}
     appendChatMsg('assistant','连接出了问题，请重试');
   }
   S.chatLoading=false;
@@ -927,10 +981,11 @@ function doShare(){
   const parsed=parseReading(S.reading);
   const insightSec=parsed.find(s=>s.type==='insight');
   const insightText=insightSec?[...(insightSec.fields||[]).map(f=>f.value),...(insightSec.paras||[])].join(''):'推演完成';
-  const img=generateShareCard(S.question,S.cards,insightText);
-  S.shareImg=img;
-  document.getElementById('share-img').src=img;
-  document.getElementById('share-preview').classList.remove('hidden');
+  generateShareCard(S.question,S.cards,insightText).then(img=>{
+    S.shareImg=img;
+    document.getElementById('share-img').src=img;
+    document.getElementById('share-preview').classList.remove('hidden');
+  });
 }
 function closeShare(){document.getElementById('share-preview').classList.add('hidden');S.shareImg=null;}
 function downloadShare(){
@@ -951,14 +1006,15 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
   ctx.closePath();ctx.fill();ctx.stroke();
 }
+function loadImg(src){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=src;});}
 
-function generateShareCard(question,cards,insightText){
+async function generateShareCard(question,cards,insightText){
   const canvas=document.createElement('canvas');
   const W=720,H=1080;canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
-  ctx.fillStyle='#080808';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0e0e0e';ctx.fillRect(0,0,W,H);
   const grd=ctx.createRadialGradient(W/2,200,0,W/2,200,500);
-  grd.addColorStop(0,'rgba(200,168,122,0.03)');grd.addColorStop(1,'transparent');
+  grd.addColorStop(0,'rgba(200,168,122,0.04)');grd.addColorStop(1,'transparent');
   ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
   ctx.strokeStyle='#c8a87a33';ctx.lineWidth=0.5;
   ctx.beginPath();ctx.moveTo(60,60);ctx.lineTo(W-60,60);ctx.stroke();
@@ -997,6 +1053,9 @@ function generateShareCard(question,cards,insightText){
   iLines.slice(0,maxL).forEach((line,i)=>{ctx.textAlign='center';ctx.fillText(line,W/2,insightY+58+i*26);});
   if(iLines.length>maxL){ctx.fillStyle='#555';ctx.fillText('…… 完整推演请体验',W/2,insightY+58+maxL*26);}
   const botY=H-60;
+  // WeChat QR in bottom-right
+  const qrImg=await loadImg('/images/wechat-qr.png');
+  if(qrImg){const qs=72;ctx.drawImage(qrImg,W-80-qs/2,botY-80,qs,qs);ctx.font="9px 'Noto Serif SC',serif";ctx.fillStyle='#444';ctx.textAlign='center';ctx.fillText('加微信',W-80,botY-4);}
   ctx.strokeStyle='#c8a87a22';ctx.beginPath();ctx.moveTo(60,botY);ctx.lineTo(W-60,botY);ctx.stroke();
   ctx.font="10px 'Noto Serif SC',serif";ctx.fillStyle='#444';ctx.textAlign='center';
   ctx.fillText('玄机塔罗 · 不查牌意，只看结构',W/2,botY+24);
@@ -1004,10 +1063,41 @@ function generateShareCard(question,cards,insightText){
 }
 
 /* ═══════════════════════════════════════════
+   PAY MODAL
+   ═══════════════════════════════════════════ */
+function openPayModal(){
+  document.getElementById('pay-username').textContent=USERNAME||'';
+  document.getElementById('pay-modal').classList.remove('hidden');
+}
+function closePayModal(){document.getElementById('pay-modal').classList.add('hidden');}
+
+function updateUsesDisplay(n){
+  if(n==null)return;
+  S.remainingUses=n;
+  const el=document.getElementById('nav-uses');
+  if(!el)return;
+  el.textContent=n>0?`剩余 ${n} 次`:'次数已用完';
+  el.style.color=n>5?'#444':n>0?'#9a7a5a':'#8a4a4a';
+  el.style.borderColor=n>5?'#1a1a1a':n>0?'#3a2a1a':'#3a1a1a';
+}
+
+/* ═══════════════════════════════════════════
    INIT
    ═══════════════════════════════════════════ */
 (function init(){
-  showPage('intro');
+  history.replaceState({page:'intro'},'');
+  showPage('intro',false);
+  window.addEventListener('popstate',e=>{
+    const pg=e.state?.page||'intro';
+    S.loadTimers.forEach(clearTimeout);
+    S.flipTimers.forEach(clearTimeout);
+    if(pg==='reading'&&!S.cards.length){
+      history.replaceState({page:'ask'},'');
+      showPage('ask',false);
+    }else{
+      showPage(pg,false);
+    }
+  });
 })();
 </script>
 </body>

@@ -206,7 +206,7 @@ tr:hover td{background:rgba(32,30,64,.4)}
           <div class="stat-card"><div class="stat-label">总用户数</div><div class="stat-value" id="s-users">-</div><div class="stat-sub">注册用户（不含管理员）</div></div>
           <div class="stat-card"><div class="stat-label">今日新增</div><div class="stat-value" id="s-today-users">-</div><div class="stat-sub">今日注册用户</div></div>
           <div class="stat-card"><div class="stat-label">今日推演</div><div class="stat-value" id="s-today-rd">-</div><div class="stat-sub">今日推演次数</div></div>
-          <div class="stat-card"><div class="stat-label">星渊会员</div><div class="stat-value" id="s-members">-</div><div class="stat-sub">当前有效会员</div></div>
+          <div class="stat-card"><div class="stat-label">有次数用户</div><div class="stat-value" id="s-members">-</div><div class="stat-sub">free_uses &gt; 3</div></div>
           <div class="stat-card"><div class="stat-label">累计推演</div><div class="stat-value" id="s-total-rd">-</div><div class="stat-sub">所有历史推演</div></div>
         </div>
 
@@ -226,7 +226,7 @@ tr:hover td{background:rgba(32,30,64,.4)}
     <!-- ── Users ──────────────────────────────────── -->
     <section id="sec-users" class="view-section">
       <div class="page-header">
-        <div><h2>用户管理</h2><p>查看所有用户，发放或取消星渊会员</p></div>
+        <div><h2>用户管理</h2><p>查看所有用户，为付费用户充值次数</p></div>
       </div>
       <div class="page-body">
         <div class="form-row">
@@ -237,10 +237,10 @@ tr:hover td{background:rgba(32,30,64,.4)}
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>ID</th><th>用户名 / 备注</th><th>状态</th><th>剩余/本月用量</th><th>到期时间</th><th>注册时间</th><th>操作</th>
+              <th>ID</th><th>用户名 / 备注</th><th>状态</th><th>剩余次数</th><th>注册时间</th><th>操作</th>
             </tr></thead>
             <tbody id="users-tbody">
-              <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:2rem">加载中…</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:2rem">加载中…</td></tr>
             </tbody>
           </table>
         </div>
@@ -371,7 +371,7 @@ tr:hover td{background:rgba(32,30,64,.4)}
 <!-- ── Modal: Grant Member ─────────────────────────── -->
 <div id="modal-overlay" onclick="closeModal(event)">
   <div class="modal-box" onclick="event.stopPropagation()">
-    <div class="modal-title" id="modal-title">发放星渊会员</div>
+    <div class="modal-title" id="modal-title">充值次数</div>
     <div id="modal-body"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">取消</button>
@@ -504,25 +504,17 @@ async function loadUsers(page) {
   S.userPage = page;
   const search = document.getElementById('user-search').value.trim();
   const tbody = document.getElementById('users-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:1.5rem">加载中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1.5rem">加载中…</td></tr>';
   try {
     const d = await api('GET', `/api/admin/users?page=${page}&search=${encodeURIComponent(search)}`);
     if (!d.list || !d.list.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:1.5rem">暂无用户</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1.5rem">暂无用户</td></tr>';
     } else {
       tbody.innerHTML = d.list.map(u => {
-        const isMember = !!u.is_member;
-        const expires = u.member_expires_at ? new Date(u.member_expires_at) : null;
-        const isExpired = expires && expires < new Date();
-        const statusBadge = isMember && !isExpired
-          ? '<span class="badge badge-member">⭐ 星渊会员</span>'
-          : '<span class="badge badge-free">免费用户</span>';
-        const usageText = isMember && !isExpired
-          ? `${u.month_uses || 0} / 30`
-          : `${u.free_uses || 0} 次剩余`;
-        const expiresText = (isMember && expires)
-          ? `<span style="color:${isExpired ? 'var(--red)' : 'var(--green)'}">${expires.toLocaleDateString('zh-CN')}${isExpired ? ' (已过期)' : ''}</span>`
-          : '—';
+        const usageText = `${u.free_uses || 0} 次`;
+        const statusBadge = (u.free_uses || 0) > 0
+          ? '<span class="badge badge-member">有次数</span>'
+          : '<span class="badge badge-free">已用完</span>';
         return `
           <tr>
             <td style="color:var(--text3)">#${u.id}</td>
@@ -537,12 +529,10 @@ async function loadUsers(page) {
             </td>
             <td>${statusBadge}</td>
             <td>${usageText}</td>
-            <td>${expiresText}</td>
             <td style="color:var(--text3)">${(u.created_at || '').slice(0, 10)}</td>
             <td>
-              <div style="display:flex;gap:.35rem;flex-wrap:wrap">
-                <button class="btn btn-success btn-sm" onclick="openGrantModal(${u.id},'${esc(u.username)}')">发放会员</button>
-                ${isMember ? `<button class="btn btn-danger btn-sm" onclick="revokeConfirm(${u.id},'${esc(u.username)}')">取消会员</button>` : ''}
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+                <button class="btn btn-success btn-sm" onclick="openCreditsModal(${u.id},'${esc(u.username)}')">充值次数</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id},'${esc(u.username)}')">删除</button>
               </div>
             </td>
@@ -551,7 +541,7 @@ async function loadUsers(page) {
     }
     renderUserPagination(page, Math.ceil(d.total / 20), d.total);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);text-align:center;padding:1rem">${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);text-align:center;padding:1rem">${err.message}</td></tr>`;
   }
 }
 
@@ -568,29 +558,18 @@ function renderUserPagination(page, pages, total) {
 }
 
 // ─── Modal helpers ────────────────────────────────────
-function openGrantModal(userId, username) {
-  S.modalAction = 'grant';
+function openCreditsModal(userId, username) {
+  S.modalAction = 'credits';
   S.modalUserId = userId;
-  document.getElementById('modal-title').textContent = `发放星渊会员 · ${username}`;
+  document.getElementById('modal-title').textContent = `充值次数 · ${username}`;
   document.getElementById('modal-body').innerHTML = `
     <div class="fgroup" style="margin-bottom:0">
-      <label style="color:var(--text2);font-size:.8rem;display:block;margin-bottom:.4rem">发放时长（月）</label>
-      <input type="number" id="modal-months" class="form-input" value="1" min="1" max="24" style="width:100px">
-      <p style="font-size:.72rem;color:var(--text3);margin-top:.4rem">若用户已有会员，有效期将顺延</p>
+      <label style="color:var(--text2);font-size:.8rem;display:block;margin-bottom:.4rem">充值次数</label>
+      <input type="number" id="modal-credits" class="form-input" value="30" min="1" max="9999" style="width:100px">
+      <p style="font-size:.72rem;color:var(--text3);margin-top:.4rem">9.9元 / 30次，可自由填写</p>
     </div>`;
-  document.getElementById('modal-confirm-btn').textContent = '确认发放';
+  document.getElementById('modal-confirm-btn').textContent = '确认充值';
   document.getElementById('modal-confirm-btn').className = 'btn btn-gold';
-  document.getElementById('modal-overlay').classList.add('show');
-}
-
-function revokeConfirm(userId, username) {
-  S.modalAction = 'revoke';
-  S.modalUserId = userId;
-  document.getElementById('modal-title').textContent = `取消会员 · ${username}`;
-  document.getElementById('modal-body').innerHTML = `
-    <p style="color:var(--text2);font-size:.85rem">确认取消 <strong style="color:var(--text)">${esc(username)}</strong> 的星渊会员资格？<br><span style="color:var(--text3);font-size:.78rem">操作立即生效，不可撤销。</span></p>`;
-  document.getElementById('modal-confirm-btn').textContent = '确认取消';
-  document.getElementById('modal-confirm-btn').className = 'btn btn-danger';
   document.getElementById('modal-overlay').classList.add('show');
 }
 
@@ -605,11 +584,8 @@ async function modalConfirm() {
   const btn = document.getElementById('modal-confirm-btn');
   btn.disabled = true;
   try {
-    const body = { action: S.modalAction };
-    if (S.modalAction === 'grant') {
-      body.months = parseInt(document.getElementById('modal-months')?.value) || 1;
-    }
-    const data = await api('POST', `/api/admin/users/${S.modalUserId}/member`, body);
+    const count = parseInt(document.getElementById('modal-credits')?.value) || 30;
+    const data = await api('POST', `/api/admin/users/${S.modalUserId}/credits`, { count });
     toast(data.message, 'ok');
     document.getElementById('modal-overlay').classList.remove('show');
     loadUsers(S.userPage);
