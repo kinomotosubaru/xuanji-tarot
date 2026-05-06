@@ -43,7 +43,9 @@ textarea:focus,input:focus{outline:none}
 #auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.92);
   display:flex;align-items:center;justify-content:center;z-index:200;animation:fadeIn .3s ease}
 #auth-overlay.hidden{display:none}
-#auth-box{width:100%;max-width:320px;padding:32px 24px}
+#auth-box{width:100%;max-width:320px;padding:36px 28px;background:rgba(8,8,10,0.98);border:0.5px solid #1a1a1a}
+#auth-close{position:absolute;top:16px;right:20px;background:transparent;border:none;color:#333;
+  font-size:18px;cursor:pointer;line-height:1;padding:4px}
 .auth-tab-row{display:flex;gap:24px;margin-bottom:28px;border-bottom:0.5px solid #111;padding-bottom:12px}
 .auth-tab{background:transparent;border:none;font-family:'Noto Serif SC',serif;
   font-size:12px;letter-spacing:2px;cursor:pointer;padding:0 2px 8px;
@@ -205,8 +207,10 @@ textarea:focus,input:focus{outline:none}
 </nav>
 
 <!-- AUTH OVERLAY -->
-<div id="auth-overlay">
-  <div id="auth-box">
+<div id="auth-overlay" class="hidden">
+  <div id="auth-box" style="position:relative">
+    <button id="auth-close" onclick="closeAuth()" title="关闭">✕</button>
+    <p style="font-size:10px;color:#c8a87a44;letter-spacing:6px;text-align:center;margin-bottom:24px;font-family:'Noto Serif SC',serif">XUANJI TAROT</p>
     <div class="auth-tab-row">
       <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">登录</button>
       <button class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">注册</button>
@@ -447,6 +451,10 @@ function switchAuthTab(tab){
   document.getElementById('reg-err').textContent='';
 }
 
+function closeAuth(){
+  document.getElementById('auth-overlay').classList.add('hidden');
+}
+
 async function doLogin(e){
   e.preventDefault();
   const username=document.getElementById('login-user').value.trim();
@@ -460,7 +468,8 @@ async function doLogin(e){
     localStorage.setItem('xuanji_token',TOKEN);
     localStorage.setItem('xuanji_username',USERNAME);
     document.getElementById('auth-overlay').classList.add('hidden');
-    showPage('intro');
+    showPage('ask');
+    setTimeout(()=>document.getElementById('question-input').focus(),300);
   }catch(ex){err.textContent=ex.message;}
 }
 
@@ -479,7 +488,8 @@ async function doRegister(e){
     localStorage.setItem('xuanji_token',TOKEN);
     localStorage.setItem('xuanji_username',USERNAME);
     document.getElementById('auth-overlay').classList.add('hidden');
-    showPage('intro');
+    showPage('ask');
+    setTimeout(()=>document.getElementById('question-input').focus(),300);
   }catch(ex){err.textContent=ex.message;}
 }
 
@@ -997,13 +1007,7 @@ function generateShareCard(question,cards,insightText){
    INIT
    ═══════════════════════════════════════════ */
 (function init(){
-  if(TOKEN){
-    document.getElementById('auth-overlay').classList.add('hidden');
-    showPage('intro');
-  }else{
-    // auth overlay is visible by default; pages stay hidden until login
-    ['p-intro','p-ask','p-reading'].forEach(id=>document.getElementById(id).classList.add('hidden'));
-  }
+  showPage('intro');
 })();
 </script>
 </body>
