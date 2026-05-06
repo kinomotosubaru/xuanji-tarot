@@ -1,5 +1,6 @@
 run = "node server.js"
 entrypoint = "server.js"
+modules = ["nodejs-20"]
 
 [nix]
 channel = "stable-23_11"
@@ -10,3 +11,10 @@ externalPort = 80
 
 [env]
 PORT = "3000"
+
+[agent]
+expertMode = true
+
+[deployment]
+run = ["sh", "-c", "node server.js"]
+build = ["sh", "-c", "npm install"]
