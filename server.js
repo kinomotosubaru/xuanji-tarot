@@ -69,12 +69,17 @@ db.exec(`
 try { db.exec(`ALTER TABLE users ADD COLUMN note TEXT DEFAULT NULL`); } catch(_) {}
 // migration: add invited_by column if not exists
 try { db.exec(`ALTER TABLE users ADD COLUMN invited_by TEXT DEFAULT NULL`); } catch(_) {}
+// migration: add remaining_count column, copy from free_uses
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN remaining_count INTEGER DEFAULT 3`);
+  db.exec(`UPDATE users SET remaining_count = free_uses`);
+} catch(_) {}
 
 // seed admin
 const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
 if (!adminExists) {
   const hash = bcrypt.hashSync('admin888', 10);
-  db.prepare('INSERT INTO users (username,password_hash,is_admin,free_uses) VALUES (?,?,1,9999)')
+  db.prepare('INSERT INTO users (username,password_hash,is_admin,remaining_count) VALUES (?,?,1,9999)')
     .run('admin', hash);
   console.log('✓ 管理员账号已创建: admin / admin888');
 }
@@ -242,13 +247,13 @@ function adminMiddleware(req, res, next) {
 // ─── Usage Helpers ─────────────────────────────────────────────────────────────
 function getRemainingUses(user) {
   if (user.is_admin) return 9999;
-  return Math.max(0, user.free_uses || 0);
+  return Math.max(0, user.remaining_count || 0);
 }
 
 function consumeUse(userId) {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
   if (user.is_admin) return;
-  db.prepare('UPDATE users SET free_uses = MAX(0, free_uses - 1) WHERE id = ?').run(userId);
+  db.prepare('UPDATE users SET remaining_count = MAX(0, remaining_count - 1) WHERE id = ?').run(userId);
 }
 
 // ─── Auth Routes ───────────────────────────────────────────────────────────────
@@ -275,7 +280,8 @@ app.post('/api/register', (req, res) => {
       .run(result.lastInsertRowid, inviteRecord.id);
 
     const token = jwt.sign({ id: result.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, username, is_admin: false, is_member: false, remaining_uses: 3 });
+    const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+    res.json({ token, username, is_admin: false, remaining_uses: getRemainingUses(newUser) });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: '注册失败：' + (err.message || '服务器内部错误') });
@@ -511,7 +517,7 @@ app.get('/api/admin/stats', authMiddleware, adminMiddleware, (req, res) => {
   const totalUsers    = db.prepare('SELECT COUNT(*) as c FROM users WHERE is_admin = 0').get().c;
   const todayUsers    = db.prepare("SELECT COUNT(*) as c FROM users WHERE is_admin = 0 AND created_at LIKE ?").get(today + '%').c;
   const todayReadings = db.prepare("SELECT COUNT(*) as c FROM readings WHERE created_at LIKE ?").get(today + '%').c;
-  const members       = db.prepare("SELECT COUNT(*) as c FROM users WHERE is_member = 1 AND is_admin = 0").get().c;
+  const members       = db.prepare("SELECT COUNT(*) as c FROM users WHERE remaining_count > 0 AND is_admin = 0").get().c;
   const totalReadings = db.prepare('SELECT COUNT(*) as c FROM readings').get().c;
   res.json({ totalUsers, todayUsers, todayReadings, members, totalReadings });
 });
@@ -523,7 +529,7 @@ app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   const offset = (page - 1) * limit;
   const like   = `%${search}%`;
   const rows = db.prepare(
-    'SELECT id, username, note, invited_by, is_member, member_expires_at, free_uses, month_uses, month_reset_at, created_at FROM users WHERE is_admin = 0 AND username LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?'
+    'SELECT id, username, note, invited_by, remaining_count, created_at FROM users WHERE is_admin = 0 AND username LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?'
   ).all(like, limit, offset);
   const total = db.prepare('SELECT COUNT(*) as c FROM users WHERE is_admin = 0 AND username LIKE ?').get(like).c;
   res.json({ list: rows, total });
@@ -556,9 +562,9 @@ app.post('/api/admin/users/:id/credits', authMiddleware, adminMiddleware, (req, 
   if (!n) return res.status(400).json({ error: '请输入有效次数（1-9999）' });
   const user = db.prepare('SELECT * FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-  db.prepare('UPDATE users SET free_uses = free_uses + ? WHERE id = ?').run(n, user.id);
-  const updated = db.prepare('SELECT free_uses FROM users WHERE id = ?').get(user.id);
-  res.json({ message: `已充值 ${n} 次，当前剩余 ${updated.free_uses} 次` });
+  db.prepare('UPDATE users SET remaining_count = remaining_count + ? WHERE id = ?').run(n, user.id);
+  const updated = db.prepare('SELECT remaining_count FROM users WHERE id = ?').get(user.id);
+  res.json({ message: `已充值 ${n} 次，当前剩余 ${updated.remaining_count} 次` });
 });
 
 app.post('/api/admin/credits', authMiddleware, adminMiddleware, (req, res) => {
@@ -568,9 +574,9 @@ app.post('/api/admin/credits', authMiddleware, adminMiddleware, (req, res) => {
   if (!n) return res.status(400).json({ error: '请输入有效次数（1-9999）' });
   const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_admin = 0').get(username);
   if (!user) return res.status(404).json({ error: `用户 "${username}" 不存在` });
-  db.prepare('UPDATE users SET free_uses = free_uses + ? WHERE id = ?').run(n, user.id);
-  const updated = db.prepare('SELECT free_uses FROM users WHERE id = ?').get(user.id);
-  res.json({ message: `${username} 已充值 ${n} 次，当前剩余 ${updated.free_uses} 次` });
+  db.prepare('UPDATE users SET remaining_count = remaining_count + ? WHERE id = ?').run(n, user.id);
+  const updated = db.prepare('SELECT remaining_count FROM users WHERE id = ?').get(user.id);
+  res.json({ message: `${username} 已充值 ${n} 次，当前剩余 ${updated.remaining_count} 次` });
 });
 
 app.get('/api/admin/invites', authMiddleware, adminMiddleware, (req, res) => {

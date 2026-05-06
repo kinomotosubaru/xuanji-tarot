@@ -553,8 +553,8 @@ async function loadUsers(page) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1.5rem">暂无用户</td></tr>';
     } else {
       tbody.innerHTML = d.list.map(u => {
-        const usageText = `${u.free_uses || 0} 次`;
-        const statusBadge = (u.free_uses || 0) > 0
+        const usageText = `${u.remaining_count || 0} 次`;
+        const statusBadge = (u.remaining_count || 0) > 0
           ? '<span class="badge badge-member">有次数</span>'
           : '<span class="badge badge-free">已用完</span>';
         return `

@@ -1121,6 +1121,11 @@ function updateUsesDisplay(n){
       showPage(pg,false);
     }
   });
+  if(TOKEN){
+    apiCall('GET','/api/me',null,true).then(d=>{
+      if(d&&d.remaining_uses!=null)updateUsesDisplay(d.remaining_uses);
+    }).catch(()=>{});
+  }
 })();
 </script>
 </body>
