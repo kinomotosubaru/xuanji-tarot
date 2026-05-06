@@ -295,7 +295,7 @@ app.post('/api/register', (req, res) => {
       'INSERT INTO users (username, password_hash, invite_code_used, invited_by) VALUES (?, ?, ?, ?)'
     ).run(username, hash, invite_code.trim().toUpperCase(), invite_code.trim().toUpperCase());
 
-    db.prepare('UPDATE invite_codes SET used_by = ?, used_at = datetime("now","localtime") WHERE id = ?')
+    db.prepare("UPDATE invite_codes SET used_by = ?, used_at = datetime('now','localtime') WHERE id = ?")
       .run(result.lastInsertRowid, inviteRecord.id);
 
     const token = jwt.sign({ id: result.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '30d' });
