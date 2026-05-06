@@ -561,6 +561,18 @@ app.post('/api/admin/users/:id/credits', authMiddleware, adminMiddleware, (req, 
   res.json({ message: `已充值 ${n} 次，当前剩余 ${updated.free_uses} 次` });
 });
 
+app.post('/api/admin/credits', authMiddleware, adminMiddleware, (req, res) => {
+  const { username, count } = req.body || {};
+  if (!username) return res.status(400).json({ error: '请输入用户名' });
+  const n = Math.max(1, Math.min(9999, parseInt(count) || 0));
+  if (!n) return res.status(400).json({ error: '请输入有效次数（1-9999）' });
+  const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_admin = 0').get(username);
+  if (!user) return res.status(404).json({ error: `用户 "${username}" 不存在` });
+  db.prepare('UPDATE users SET free_uses = free_uses + ? WHERE id = ?').run(n, user.id);
+  const updated = db.prepare('SELECT free_uses FROM users WHERE id = ?').get(user.id);
+  res.json({ message: `${username} 已充值 ${n} 次，当前剩余 ${updated.free_uses} 次` });
+});
+
 app.get('/api/admin/invites', authMiddleware, adminMiddleware, (req, res) => {
   const rows = db.prepare(`
     SELECT i.id, i.code, i.used_at, i.created_at, u.username AS used_by_name

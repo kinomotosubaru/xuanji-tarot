@@ -9,7 +9,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#0e0e0e;color:#ccc;font-family:'Noto Serif SC','Source Han Serif SC',Georgia,serif}
-::placeholder{color:#333}
+::placeholder{color:#555}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#1a1a1a;border-radius:2px}
@@ -35,7 +35,7 @@ textarea:focus,input:focus{outline:none}
   font-size:14px;letter-spacing:4px;cursor:pointer;font-family:'Noto Serif SC',serif}
 #nav-hist{background:transparent;border:none;color:#555;
   font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'Noto Serif SC',serif}
-#nav-uses{font-size:10px;color:#444;letter-spacing:1px;font-family:'Noto Serif SC',serif;
+#nav-uses{font-size:10px;color:#666;letter-spacing:1px;font-family:'Noto Serif SC',serif;
   padding:3px 8px;border:0.5px solid #1a1a1a;border-radius:2px}
 
 .page{position:relative;z-index:1;min-height:100vh;
@@ -47,12 +47,12 @@ textarea:focus,input:focus{outline:none}
   display:flex;align-items:center;justify-content:center;z-index:200;animation:fadeIn .3s ease}
 #auth-overlay.hidden{display:none}
 #auth-box{width:100%;max-width:320px;padding:36px 28px;background:rgba(8,8,10,0.98);border:0.5px solid #1a1a1a}
-#auth-close{position:absolute;top:16px;right:20px;background:transparent;border:none;color:#333;
+#auth-close{position:absolute;top:16px;right:20px;background:transparent;border:none;color:#555;
   font-size:18px;cursor:pointer;line-height:1;padding:4px}
 .auth-tab-row{display:flex;gap:24px;margin-bottom:28px;border-bottom:0.5px solid #111;padding-bottom:12px}
 .auth-tab{background:transparent;border:none;font-family:'Noto Serif SC',serif;
   font-size:12px;letter-spacing:2px;cursor:pointer;padding:0 2px 8px;
-  color:#333;border-bottom:1px solid transparent;transition:all .2s}
+  color:#555;border-bottom:1px solid transparent;transition:all .2s}
 .auth-tab.active{color:#c8a87a;border-bottom-color:#c8a87a44}
 .auth-form{display:flex;flex-direction:column;gap:14px}
 .auth-form.hidden{display:none}
@@ -60,7 +60,7 @@ textarea:focus,input:focus{outline:none}
   color:#ccc;font-size:14px;padding:10px 0;font-family:'Noto Serif SC',serif;width:100%}
 .auth-input:focus{border-bottom-color:#c8a87a22}
 .auth-err{font-size:11px;color:#b85a4a;min-height:16px;text-align:center}
-.auth-hint{font-size:10px;color:#444;text-align:center;line-height:1.8}
+.auth-hint{font-size:10px;color:#666;text-align:center;line-height:1.8}
 
 /* ── BUTTONS ───────────────────────────────────────────────────────── */
 .btn-main{background:transparent;border:0.5px solid #c8a87a33;color:#c8a87a;
@@ -70,7 +70,7 @@ textarea:focus,input:focus{outline:none}
 .btn-sub{background:transparent;border:0.5px solid #33333a;color:#777;
   padding:10px 32px;font-size:12px;letter-spacing:2px;cursor:pointer;
   font-family:'Noto Serif SC',serif;border-radius:2px;transition:all .3s}
-.btn-ghost{background:transparent;border:none;color:#444;font-size:11px;
+.btn-ghost{background:transparent;border:none;color:#555;font-size:11px;
   letter-spacing:1px;cursor:pointer;font-family:'Noto Serif SC',serif;padding:6px 0}
 
 /* ── CARDS ─────────────────────────────────────────────────────────── */
@@ -96,14 +96,14 @@ textarea:focus,input:focus{outline:none}
 .card-name-full{font-size:9px;font-family:'Noto Serif SC',serif}
 .card-rev-label{font-size:7px;letter-spacing:1px;margin-top:1px;font-family:'Noto Serif SC',serif}
 .card-el-label{position:absolute;bottom:5px;font-size:7px;letter-spacing:3px;font-family:'Noto Serif SC',serif}
-.win-desc{font-size:8px;color:#333;letter-spacing:1px;animation:fadeUp .3s ease}
+.win-desc{font-size:8px;color:#555;letter-spacing:1px;animation:fadeUp .3s ease}
 
 /* ── LOADING ──────────────────────────────────────────────────────── */
 #loading-section{text-align:center;padding:40px 0;animation:fadeUp .4s ease}
 #loading-section.hidden{display:none}
 #load-bars{display:flex;justify-content:center;gap:5px;margin-bottom:20px}
 .load-bar{height:2px;background:#1a1a1a;border-radius:1px;transition:all .5s}
-#load-step-text{font-size:11px;color:#444;letter-spacing:2px;font-family:'Noto Serif SC',serif}
+#load-step-text{font-size:11px;color:#666;letter-spacing:2px;font-family:'Noto Serif SC',serif}
 
 /* ── ERROR ────────────────────────────────────────────────────────── */
 #error-section{text-align:center;padding:20px 0}
@@ -121,16 +121,16 @@ textarea:focus,input:focus{outline:none}
 .result-card-title{font-family:'Noto Serif SC',serif;font-size:13px;font-weight:400;
   color:#c8a87a;letter-spacing:1px;margin-bottom:12px}
 .result-field{margin-bottom:10px}
-.result-field-label{font-size:9px;color:#444;letter-spacing:2px;font-family:'Noto Serif SC',serif;display:block;margin-bottom:3px}
-.result-field-val{font-size:13px;color:#888;line-height:1.9;margin:0}
-.result-field-val.hi{color:#ccc}
-.result-para{font-size:13px;color:#999;line-height:1.9;margin:4px 0}
+.result-field-label{font-size:9px;color:#777;letter-spacing:2px;font-family:'Noto Serif SC',serif;display:block;margin-bottom:3px}
+.result-field-val{font-size:13px;color:#bbb;line-height:1.9;margin:0}
+.result-field-val.hi{color:#e0e0e0}
+.result-para{font-size:13px;color:#bbb;line-height:1.9;margin:4px 0}
 .result-insight-sec{opacity:0;transform:translateY(16px);transition:all .7s ease}
 .result-insight-sec.vis{opacity:1;transform:translateY(0)}
 .result-insight-divider{width:30px;height:0.5px;background:#c8a87a22;margin:32px auto 24px}
 .result-insight-title{font-family:'Noto Serif SC',serif;font-size:15px;font-weight:300;
   color:#c8a87a;letter-spacing:3px;text-align:center;margin-bottom:18px}
-.result-insight-para{font-size:13px;color:#aaa;line-height:2;margin:8px 0;
+.result-insight-para{font-size:13px;color:#c0c0c0;line-height:2;margin:8px 0;
   text-align:center;max-width:440px;margin-left:auto;margin-right:auto}
 #result-actions{display:flex;flex-direction:column;align-items:center;gap:12px;
   margin-top:40px;padding-top:28px;border-top:0.5px solid #141414;
@@ -154,12 +154,12 @@ textarea:focus,input:focus{outline:none}
   padding:16px 20px;border-bottom:0.5px solid #1a1a1a}
 #followup-msgs{flex:1;overflow-y:auto;padding:20px;
   display:flex;flex-direction:column;gap:16px}
-#followup-hint{font-size:11px;color:#444;text-align:center;margin:8px 0 16px;line-height:1.8}
+#followup-hint{font-size:11px;color:#666;text-align:center;margin:8px 0 16px;line-height:1.8}
 #followup-footer{padding:12px 16px;border-top:0.5px solid #1a1a1a;display:flex;gap:10px}
 #followup-input{flex:1;background:#0a0a0a;border:0.5px solid #222;border-radius:4px;
   padding:10px 14px;color:#ccc;font-size:13px;font-family:'Noto Serif SC',serif}
 #followup-input:focus{border-color:#c8a87a33}
-#followup-send{background:transparent;border:0.5px solid #c8a87a33;color:#444;
+#followup-send{background:transparent;border:0.5px solid #c8a87a33;color:#666;
   padding:10px 20px;font-size:12px;letter-spacing:2px;cursor:pointer;
   font-family:'Noto Serif SC',serif;border-radius:4px;transition:color .2s,border-color .2s}
 #followup-send.ready{color:#c8a87a;border-color:#c8a87a33}
@@ -171,7 +171,7 @@ textarea:focus,input:focus{outline:none}
 .chat-msg.assistant .chat-bubble{background:#151518;border-radius:12px 12px 12px 2px}
 .chat-text{font-size:13px;line-height:1.8;white-space:pre-wrap}
 .chat-msg.user .chat-text{color:#aab}
-.chat-msg.assistant .chat-text{color:#aaa}
+.chat-msg.assistant .chat-text{color:#c0c0c0}
 .chat-thinking{align-self:flex-start;padding:10px 14px;background:#111;
   border-radius:12px 12px 12px 2px;border:0.5px solid #1a1a1a}
 .chat-thinking.hidden{display:none}
@@ -184,10 +184,10 @@ textarea:focus,input:focus{outline:none}
   padding:16px 20px;border-bottom:0.5px solid #1a1a1a}
 #history-list{flex:1;overflow-y:auto;padding:16px 20px}
 .hist-item{padding:14px 0;border-bottom:0.5px solid #111;cursor:pointer}
-.hist-q{font-size:13px;color:#999;margin-bottom:6px;line-height:1.6}
+.hist-q{font-size:13px;color:#bbb;margin-bottom:6px;line-height:1.6}
 .hist-cards{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
 .hist-card-tag{font-size:10px;letter-spacing:1px}
-.hist-date{font-size:10px;color:#333}
+.hist-date{font-size:10px;color:#555}
 
 /* ── SHARE PREVIEW ────────────────────────────────────────────────── */
 #share-preview{position:fixed;inset:0;background:rgba(0,0,0,0.9);
@@ -196,7 +196,7 @@ textarea:focus,input:focus{outline:none}
 #share-preview.hidden{display:none}
 #share-img{max-width:340px;max-height:70vh;border-radius:4px;border:0.5px solid #222}
 #share-btns{display:flex;gap:12px;margin-top:16px}
-#share-hint{font-size:10px;color:#444;margin-top:12px}
+#share-hint{font-size:10px;color:#666;margin-top:12px}
 /* ── PAY MODAL ────────────────────────────────────────────── */
 #pay-modal{position:fixed;inset:0;background:rgba(0,0,0,0.93);
   display:flex;align-items:center;justify-content:center;z-index:220;animation:fadeIn .3s ease}
@@ -209,7 +209,11 @@ textarea:focus,input:focus{outline:none}
 .pay-qr-row{display:flex;justify-content:center;gap:24px;margin:24px 0 20px}
 .pay-qr-col{display:flex;flex-direction:column;align-items:center;gap:8px}
 .pay-qr-img{width:120px;height:120px;object-fit:cover;background:#111;border:0.5px solid #222}
-.pay-qr-label{font-size:10px;color:#555;letter-spacing:1px;font-family:'Noto Serif SC',serif}
+.pay-qr-label{font-size:10px;color:#666;letter-spacing:1px;font-family:'Noto Serif SC',serif}
+.example-q{background:transparent;border:0.5px solid #2a2a2a;color:#777;
+  padding:5px 12px;font-size:11px;letter-spacing:.5px;cursor:pointer;border-radius:12px;
+  font-family:'Noto Serif SC',serif;transition:all .2s}
+.example-q:hover{border-color:#c8a87a33;color:#aaa}
 </style>
 </head>
 <body>
@@ -221,6 +225,10 @@ textarea:focus,input:focus{outline:none}
   <button id="nav-brand" onclick="fullReset()">玄机</button>
   <div style="display:flex;align-items:center;gap:12px">
     <span id="nav-uses"></span>
+    <button id="nav-pay" onclick="openPayModal()"
+      style="background:transparent;border:0.5px solid #c8a87a22;color:#c8a87a88;
+             font-size:10px;letter-spacing:2px;cursor:pointer;padding:4px 10px;border-radius:2px;
+             font-family:'Noto Serif SC',serif;display:none">充值</button>
     <button id="nav-hist" onclick="openHistory()">推演记录</button>
   </div>
 </nav>
@@ -253,7 +261,7 @@ textarea:focus,input:focus{outline:none}
 
 <!-- INTRO PAGE -->
 <div class="page" id="p-intro" style="animation:fadeUp .6s ease">
-  <p style="font-size:11px;color:#333;letter-spacing:6px;margin-bottom:36px;animation:fadeUp .8s ease">XUANJI TAROT</p>
+  <p style="font-size:11px;color:#555;letter-spacing:6px;margin-bottom:36px;animation:fadeUp .8s ease">XUANJI TAROT</p>
   <h1 style="font-size:40px;font-weight:200;color:#c8a87a;letter-spacing:14px;margin-bottom:10px;animation:fadeUp .8s ease .1s both">玄机</h1>
   <p style="font-size:12px;color:#555;letter-spacing:4px;margin-bottom:52px;animation:fadeUp .8s ease .2s both">分形结构语法塔罗</p>
   <div style="max-width:320px;text-align:center;margin-bottom:44px;animation:fadeUp .8s ease .3s both">
@@ -275,35 +283,43 @@ textarea:focus,input:focus{outline:none}
   <div style="margin-top:56px;display:flex;gap:32px;animation:fadeUp .8s ease .5s both">
     <div style="text-align:center">
       <p style="font-size:12px;color:#888;letter-spacing:1px;margin-bottom:4px">不查牌意</p>
-      <p style="font-size:10px;color:#444;line-height:1.6">不套用任何现成解释</p>
+      <p style="font-size:10px;color:#666;line-height:1.6">不套用任何现成解释</p>
     </div>
     <div style="text-align:center">
       <p style="font-size:12px;color:#888;letter-spacing:1px;margin-bottom:4px">结构推演</p>
-      <p style="font-size:10px;color:#444;line-height:1.6">从坐标位置直接推导</p>
+      <p style="font-size:10px;color:#666;line-height:1.6">从坐标位置直接推导</p>
     </div>
     <div style="text-align:center">
       <p style="font-size:12px;color:#888;letter-spacing:1px;margin-bottom:4px">可以追问</p>
-      <p style="font-size:10px;color:#444;line-height:1.6">针对每张牌深入追问</p>
+      <p style="font-size:10px;color:#666;line-height:1.6">针对每张牌深入追问</p>
     </div>
   </div>
 </div>
 
 <!-- ASK PAGE -->
 <div class="page hidden" id="p-ask">
-  <p style="font-size:12px;color:#555;letter-spacing:4px;margin-bottom:44px;animation:fadeUp .5s ease">写下困惑你的事</p>
+  <p style="font-size:12px;color:#666;letter-spacing:4px;margin-bottom:44px;animation:fadeUp .5s ease">写下困惑你的事</p>
   <div style="width:100%;max-width:440px;animation:fadeUp .5s ease .1s both">
     <textarea id="question-input" rows="3" placeholder="比如：我该不该接这个合作？"
       style="width:100%;background:transparent;border:none;border-bottom:0.5px solid #222;
              color:#ccc;font-size:16px;line-height:2.2;padding:14px 0;
              font-family:'Noto Serif SC',serif;letter-spacing:.5px;resize:none;"
       oninput="onQuestionInput()" onkeydown="onQuestionKey(event)"></textarea>
+    <div style="margin-top:16px">
+      <p style="font-size:10px;color:#555;letter-spacing:1px;margin-bottom:10px;font-family:'Noto Serif SC',serif">好的问题能带来更精准的推演，试试这样问：</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        <button class="example-q" onclick="fillQuestion('我和TA之间现在的状态是什么，接下来会怎样？')">我和TA之间的状态</button>
+        <button class="example-q" onclick="fillQuestion('这件事我现在卡在哪里，是什么在阻碍我？')">我卡在哪里</button>
+        <button class="example-q" onclick="fillQuestion('如果我选择离开现在的工作，会走向哪里？')">离职会走向哪里</button>
+      </div>
+    </div>
     <div style="display:flex;justify-content:space-between;margin-top:20px">
       <button class="btn-ghost" onclick="fullReset()">返回</button>
       <button class="btn-main" id="draw-btn" onclick="startDraw()" disabled>抽牌</button>
     </div>
   </div>
   <div style="margin-top:48px;max-width:360px;text-align:center;animation:fadeUp .5s ease .2s both">
-    <p style="font-size:10px;color:#333;line-height:2">
+    <p style="font-size:10px;color:#555;line-height:2">
       会抽出五张牌，分别落入"此刻·暗流·阻碍·走向·启示"五个观察窗口。<br>
       推演完成后你可以针对任何一张牌追问。
     </p>
@@ -314,7 +330,7 @@ textarea:focus,input:focus{outline:none}
 <div class="page hidden" id="p-reading" style="padding:56px 16px 80px;justify-content:flex-start">
   <!-- Question display -->
   <div style="text-align:center;margin-bottom:32px;animation:fadeUp .4s ease;width:100%">
-    <p style="font-size:10px;color:#444;letter-spacing:3px;margin-bottom:6px">你的问题</p>
+    <p style="font-size:10px;color:#666;letter-spacing:3px;margin-bottom:6px">你的问题</p>
     <p id="reading-question" style="font-size:14px;color:#777;max-width:360px;margin:0 auto;line-height:1.8"></p>
   </div>
 
@@ -359,7 +375,7 @@ textarea:focus,input:focus{outline:none}
       <div style="width:24px;height:0.5px;background:#33333a;margin-bottom:14px"></div>
       <p style="font-size:10px;color:#666;letter-spacing:1px;margin-bottom:4px;font-family:'Noto Serif SC',serif">结构坐标</p>
       <p id="insp-coord" style="font-size:13px;color:#aaa;line-height:1.8;font-family:'Noto Serif SC',serif"></p>
-      <p style="font-size:9px;color:#333;margin-top:16px">点任意处关闭</p>
+      <p style="font-size:9px;color:#555;margin-top:16px">点任意处关闭</p>
     </div>
   </div>
 </div>
@@ -423,10 +439,9 @@ textarea:focus,input:focus{outline:none}
         <span class="pay-qr-label">加微信发截图</span>
       </div>
     </div>
-    <p style="font-size:11px;color:#444;line-height:1.9;letter-spacing:.5px">
-      付款后截图，加右侧客服微信<br>
-      告知用户名 <strong id="pay-username" style="color:#888"></strong><br>
-      即可充值 30 次
+    <p style="font-size:11px;color:#666;line-height:1.9;letter-spacing:.5px">
+      扫码付款后添加微信，发送截图获取充值码<br>
+      用户名：<strong id="pay-username" style="color:#aaa"></strong>
     </p>
   </div>
 </div>
@@ -449,7 +464,7 @@ function getEl(card){
   return card.el;
 }
 function getCoord(card){
-  if(card.type==="major"){const id=card.id;if(id===0)return"圆外·万象之源";if(id===11)return"中轴·静止原点";const m={水:"内在孕育",土:"向外成形",火:"已存在",风:"回流"};const sub=["纯","之水","之土","之火","之风"];const el=getEl(card);let si;if(id<=5)si=id===1?0:id-1;else if(id<=10)si=id===10?0:id-5;else if(id<=16)si=id===12?0:id-12;else si=id-16;return`${el}·${m[el]}·${sub[si]}`;}
+  if(card.type==="major"){const id=card.id;if(id===0)return"圆外·万象之源";if(id===11)return"中轴·静止原点";const m={水:"内在孕育",土:"向外成形",火:"已存在",风:"回流"};const sub=["纯","之水","之土","之火","之风"];const el=getEl(card);let si;if(id<=5)si=id===1?0:id-1;else if(id<=10)si=id===10?0:id-5;else if(id<=16)si=id===12?0:id-12;else si=id===21?0:id-16;return`${el}·${m[el]}·${sub[si]}`;}
   if(card.type==="minor"){const n=card.num;if(n===1)return`${card.el}·起点`;if(n===10)return`${card.el}·圆满`;let l2;if(n<=3)l2="水";else if(n<=5)l2="土";else if(n<=7)l2="火";else l2="风";const l3=["水","土","火","风"][(n-2)%4];return`${card.el}·${l2}·${l3}`;}
   const ce={侍卫:"土",骑士:"风",王后:"水",国王:"火"};return`${card.el}过程·${ce[card.court]}风格`;
 }
@@ -600,6 +615,12 @@ function onQuestionInput(){
   document.getElementById('draw-btn').disabled=!S.question.trim();
 }
 function onQuestionKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();startDraw();}}
+function fillQuestion(q){
+  const ta=document.getElementById('question-input');
+  ta.value=q;S.question=q;
+  document.getElementById('draw-btn').disabled=false;
+  ta.focus();
+}
 
 /* ═══════════════════════════════════════════
    CARDS RENDERING
@@ -1077,8 +1098,10 @@ function updateUsesDisplay(n){
   const el=document.getElementById('nav-uses');
   if(!el)return;
   el.textContent=n>0?`剩余 ${n} 次`:'次数已用完';
-  el.style.color=n>5?'#444':n>0?'#9a7a5a':'#8a4a4a';
+  el.style.color=n>5?'#555':n>0?'#9a7a5a':'#8a4a4a';
   el.style.borderColor=n>5?'#1a1a1a':n>0?'#3a2a1a':'#3a1a1a';
+  const payBtn=document.getElementById('nav-pay');
+  if(payBtn)payBtn.style.display='inline-block';
 }
 
 /* ═══════════════════════════════════════════
