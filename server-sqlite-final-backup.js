@@ -1,7 +1,7 @@
 'use strict';
 
 const express = require('express');
-const { Pool } = require('pg');
+const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
@@ -15,31 +15,75 @@ const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
 const DEEPSEEK_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
 const DEEPSEEK_MODEL = 'deepseek-chat';
 
-// ─── Database: PostgreSQL ─────────────────────────────────────────────────────
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// ─── Database ──────────────────────────────────────────────────────────────────
+const db = new Database(path.join(__dirname, 'xuanji.db'));
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
-async function pgOne(sql, params = []) {
-  const r = await pool.query(sql, params);
-  return r.rows[0] || null;
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    username         TEXT UNIQUE NOT NULL,
+    password_hash    TEXT NOT NULL,
+    is_admin         INTEGER DEFAULT 0,
+    is_member        INTEGER DEFAULT 0,
+    member_expires_at TEXT,
+    free_uses        INTEGER DEFAULT 3,
+    month_uses       INTEGER DEFAULT 0,
+    month_reset_at   TEXT,
+    invite_code_used TEXT,
+    created_at       TEXT DEFAULT (datetime('now','localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS invite_codes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    code       TEXT UNIQUE NOT NULL,
+    used_by    INTEGER,
+    used_at    TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (used_by) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS readings (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    question    TEXT NOT NULL,
+    cards       TEXT NOT NULL,
+    result      TEXT NOT NULL,
+    category    TEXT DEFAULT '其他',
+    share_token TEXT,
+    created_at  TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS question_stats (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    category TEXT NOT NULL,
+    count    INTEGER DEFAULT 0,
+    date     TEXT NOT NULL,
+    UNIQUE(category, date)
+  );
+`);
+
+// migration: add note column if not exists
+try { db.exec(`ALTER TABLE users ADD COLUMN note TEXT DEFAULT NULL`); } catch(_) {}
+// migration: add invited_by column if not exists
+try { db.exec(`ALTER TABLE users ADD COLUMN invited_by TEXT DEFAULT NULL`); } catch(_) {}
+// migration: add remaining_count column, copy from free_uses
+try {
+  db.exec(`ALTER TABLE users ADD COLUMN remaining_count INTEGER DEFAULT 3`);
+  db.exec(`UPDATE users SET remaining_count = free_uses`);
+} catch(_) {}
+
+// seed admin
+const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+if (!adminExists) {
+  const hash = bcrypt.hashSync('admin888', 10);
+  db.prepare('INSERT INTO users (username,password_hash,is_admin,remaining_count) VALUES (?,?,1,9999)')
+    .run('admin', hash);
+  console.log('✓ 管理员账号已创建: admin / admin888');
 }
 
-async function pgAll(sql, params = []) {
-  const r = await pool.query(sql, params);
-  return r.rows;
-}
-
-async function pgRun(sql, params = []) {
-  return await pool.query(sql, params);
-}
-
-async function initDb() {
-  const adminExists = await pgOne('SELECT id FROM users WHERE username = $1', ['admin']);
-  if (!adminExists) {
-    const hash = bcrypt.hashSync('admin888', 10);
-    await pgRun('INSERT INTO users (username,password_hash,is_admin,remaining_count) VALUES ($1,$2,1,9999)', ['admin', hash]);
-    console.log('✓ 管理员账号已创建: admin / admin888');
-  }
-}
 // ─── Tarot Cards ───────────────────────────────────────────────────────────────
 const MAJOR_ARCANA = [
   { id: 0,  name: '愚者',     name_en: 'The Fool' },
@@ -86,14 +130,12 @@ function classifyQuestion(q) {
   return '其他';
 }
 
-async function recordCategoryStat(category) {
+function recordCategoryStat(category) {
   const today = new Date().toISOString().slice(0, 10);
-  await pgRun(
-    `INSERT INTO question_stats (category, count, date)
-     VALUES ($1, 1, $2)
-     ON CONFLICT(category, date) DO UPDATE SET count = question_stats.count + 1`,
-    [category, today]
-  );
+  db.prepare(`
+    INSERT INTO question_stats (category, count, date) VALUES (?, 1, ?)
+    ON CONFLICT(category, date) DO UPDATE SET count = count + 1
+  `).run(category, today);
 }
 
 // ─── DeepSeek API ──────────────────────────────────────────────────────────────
@@ -182,13 +224,13 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-async function authMiddleware(req, res, next) {
+function authMiddleware(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : header;
   if (!token) return res.status(401).json({ error: '请先登录' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    const user = await pgOne('SELECT * FROM users WHERE id = $1', [payload.id]);
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(payload.id);
     if (!user) return res.status(401).json({ error: '用户不存在，请重新登录' });
     req.dbUser = user;
     next();
@@ -208,14 +250,14 @@ function getRemainingUses(user) {
   return Math.max(0, user.remaining_count || 0);
 }
 
-async function consumeUse(userId) {
-  const user = await pgOne('SELECT * FROM users WHERE id = $1', [userId]);
-  if (!user || user.is_admin) return;
-  await pgRun('UPDATE users SET remaining_count = GREATEST(0, remaining_count - 1) WHERE id = $1', [userId]);
+function consumeUse(userId) {
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+  if (user.is_admin) return;
+  db.prepare('UPDATE users SET remaining_count = MAX(0, remaining_count - 1) WHERE id = ?').run(userId);
 }
 
 // ─── Auth Routes ───────────────────────────────────────────────────────────────
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', (req, res) => {
   try {
     const { username, password, invite_code } = req.body || {};
     if (!username || !password) return res.status(400).json({ error: '用户名和密码不能为空' });
@@ -223,29 +265,22 @@ app.post('/api/register', async (req, res) => {
     if (password.length < 6) return res.status(400).json({ error: '密码至少6位' });
     if (!invite_code || !invite_code.trim()) return res.status(400).json({ error: '请输入邀请码' });
 
-    const code = invite_code.trim().toUpperCase();
-
-    const existing = await pgOne('SELECT id FROM users WHERE username = $1', [username]);
+    const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
     if (existing) return res.status(400).json({ error: '用户名已存在' });
 
-    const inviteRecord = await pgOne('SELECT * FROM invite_codes WHERE code = $1 AND used_by IS NULL', [code]);
+    const inviteRecord = db.prepare('SELECT * FROM invite_codes WHERE code = ? AND used_by IS NULL').get(invite_code.trim().toUpperCase());
     if (!inviteRecord) return res.status(400).json({ error: '邀请码无效或已被使用' });
 
     const hash = bcrypt.hashSync(password, 10);
+    const result = db.prepare(
+      'INSERT INTO users (username, password_hash, invite_code_used, invited_by) VALUES (?, ?, ?, ?)'
+    ).run(username, hash, invite_code.trim().toUpperCase(), invite_code.trim().toUpperCase());
 
-    const inserted = await pgOne(
-      'INSERT INTO users (username, password_hash, invite_code_used, invited_by) VALUES ($1, $2, $3, $4) RETURNING id',
-      [username, hash, code, code]
-    );
+    db.prepare("UPDATE invite_codes SET used_by = ?, used_at = datetime('now','localtime') WHERE id = ?")
+      .run(result.lastInsertRowid, inviteRecord.id);
 
-    await pgRun(
-      "UPDATE invite_codes SET used_by = $1, used_at = to_char(now(), 'YYYY-MM-DD HH24:MI:SS') WHERE id = $2",
-      [inserted.id, inviteRecord.id]
-    );
-
-    const token = jwt.sign({ id: inserted.id, username }, JWT_SECRET, { expiresIn: '30d' });
-    const newUser = await pgOne('SELECT * FROM users WHERE id = $1', [inserted.id]);
-
+    const token = jwt.sign({ id: result.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '30d' });
+    const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
     res.json({ token, username, is_admin: false, remaining_uses: getRemainingUses(newUser) });
   } catch (err) {
     console.error('Register error:', err);
@@ -253,15 +288,13 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: '请填写用户名和密码' });
-
-  const user = await pgOne('SELECT * FROM users WHERE username = $1', [username]);
+  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: '用户名或密码错误' });
   }
-
   const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
   res.json({
     token,
@@ -272,14 +305,12 @@ app.post('/api/login', async (req, res) => {
   });
 });
 
-app.post('/api/admin/login', async (req, res) => {
+app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body || {};
-
-  const user = await pgOne('SELECT * FROM users WHERE username = $1 AND is_admin = 1', [username]);
+  const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_admin = 1').get(username);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ error: '管理员账号或密码错误' });
   }
-
   const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, username: user.username });
 });
@@ -317,18 +348,17 @@ app.post('/api/read', authMiddleware, async (req, res) => {
       { role: 'user', content: prompt },
     ]);
 
-    await consumeUse(u.id);
-    await recordCategoryStat(category);
+    consumeUse(u.id);
+    recordCategoryStat(category);
 
-    const inserted = await pgOne(
-      'INSERT INTO readings (user_id, question, cards, result, category) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [u.id, question.trim(), JSON.stringify(cards), result, category]
-    );
+    const insertResult = db.prepare(
+      'INSERT INTO readings (user_id, question, cards, result, category) VALUES (?,?,?,?,?)'
+    ).run(u.id, question.trim(), JSON.stringify(cards), result, category);
 
-    const freshUser = await pgOne('SELECT * FROM users WHERE id = $1', [u.id]);
+    const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
 
     res.json({
-      id: inserted.id,
+      id: insertResult.lastInsertRowid,
       question: question.trim(),
       cards,
       result,
@@ -395,24 +425,18 @@ app.post('/api/reading', authMiddleware, async (req, res) => {
   try {
     const result = await callDeepSeek([
       { role: 'system', content: SYS_PROMPT_FRACTAL },
-      { role: 'user', content: `问题：${question.trim()}
-
-牌阵：五窗口结构采样
-${cards_info}
-
-请按格式推演。` },
+      { role: 'user', content: `问题：${question.trim()}\n\n牌阵：五窗口结构采样\n${cards_info}\n\n请按格式推演。` },
     ]);
 
-    await consumeUse(u.id);
-    await recordCategoryStat(category);
+    consumeUse(u.id);
+    recordCategoryStat(category);
 
-    const inserted = await pgOne(
-      'INSERT INTO readings (user_id, question, cards, result, category) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-      [u.id, question.trim(), cards_info, result, category]
-    );
+    const insertResult = db.prepare(
+      'INSERT INTO readings (user_id, question, cards, result, category) VALUES (?,?,?,?,?)'
+    ).run(u.id, question.trim(), cards_info, result, category);
 
-    const freshUser = await pgOne('SELECT * FROM users WHERE id = $1', [u.id]);
-    res.json({ reading: result, id: inserted.id, remaining_uses: getRemainingUses(freshUser) });
+    const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
+    res.json({ reading: result, id: insertResult.lastInsertRowid, remaining_uses: getRemainingUses(freshUser) });
   } catch (err) {
     console.error('Reading error:', err.message);
     res.status(500).json({ error: '推演服务暂时不可用，请稍后再试' });
@@ -428,16 +452,14 @@ app.post('/api/followup', authMiddleware, async (req, res) => {
   const remaining = getRemainingUses(u);
   if (remaining <= 0) return res.status(403).json({ error: 'NO_USES', message: '推演次数已用完' });
 
-  const sysFollowup = SYS_PROMPT_FRACTAL + `
-
-现在用户在追问。基于同一次推演的上下文回答，保持结构语法框架，语言简洁直接。不要重复已经说过的内容，直接回答新问题。`;
+  const sysFollowup = SYS_PROMPT_FRACTAL + '\n\n现在用户在追问。基于同一次推演的上下文回答，保持结构语法框架，语言简洁直接。不要重复已经说过的内容，直接回答新问题。';
   try {
     const reply = await callDeepSeek([
       { role: 'system', content: sysFollowup },
       ...messages,
     ]);
-    await consumeUse(u.id);
-    const freshUser = await pgOne('SELECT * FROM users WHERE id = $1', [u.id]);
+    consumeUse(u.id);
+    const freshUser = db.prepare('SELECT * FROM users WHERE id = ?').get(u.id);
     res.json({ reply, remaining_uses: getRemainingUses(freshUser) });
   } catch (err) {
     console.error('Followup error:', err.message);
@@ -446,266 +468,200 @@ app.post('/api/followup', authMiddleware, async (req, res) => {
 });
 
 // ─── History Routes ────────────────────────────────────────────────────────────
-app.get('/api/history', authMiddleware, async (req, res) => {
+app.get('/api/history', authMiddleware, (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = 10;
   const offset = (page - 1) * limit;
-
-  const rows = await pgAll(
-    'SELECT id, question, cards, result, category, share_token, created_at FROM readings WHERE user_id = $1 ORDER BY id DESC LIMIT $2 OFFSET $3',
-    [req.dbUser.id, limit, offset]
-  );
-
-  const totalRow = await pgOne('SELECT COUNT(*)::int as c FROM readings WHERE user_id = $1', [req.dbUser.id]);
-  const total = totalRow.c;
-
+  const rows = db.prepare(
+    'SELECT id, question, cards, result, category, share_token, created_at FROM readings WHERE user_id = ? ORDER BY id DESC LIMIT ? OFFSET ?'
+  ).all(req.dbUser.id, limit, offset);
+  const total = db.prepare('SELECT COUNT(*) as c FROM readings WHERE user_id = ?').get(req.dbUser.id).c;
   res.json({ list: rows.map(r => ({ ...r, cards: JSON.parse(r.cards) })), total, page, pages: Math.ceil(total / limit) });
 });
 
-app.get('/api/history/:id', authMiddleware, async (req, res) => {
-  const row = await pgOne('SELECT * FROM readings WHERE id = $1 AND user_id = $2', [req.params.id, req.dbUser.id]);
+app.get('/api/history/:id', authMiddleware, (req, res) => {
+  const row = db.prepare('SELECT * FROM readings WHERE id = ? AND user_id = ?').get(req.params.id, req.dbUser.id);
   if (!row) return res.status(404).json({ error: '记录不存在' });
   res.json({ ...row, cards: JSON.parse(row.cards) });
 });
 
-app.delete('/api/history/:id', authMiddleware, async (req, res) => {
-  const info = await pgRun('DELETE FROM readings WHERE id = $1 AND user_id = $2', [req.params.id, req.dbUser.id]);
-  if (!info.rowCount) return res.status(404).json({ error: '记录不存在' });
+app.delete('/api/history/:id', authMiddleware, (req, res) => {
+  const info = db.prepare('DELETE FROM readings WHERE id = ? AND user_id = ?').run(req.params.id, req.dbUser.id);
+  if (!info.changes) return res.status(404).json({ error: '记录不存在' });
   res.json({ message: '已删除' });
 });
 
 // ─── Share Routes ──────────────────────────────────────────────────────────────
-app.post('/api/share/:id', authMiddleware, async (req, res) => {
-  const row = await pgOne('SELECT * FROM readings WHERE id = $1 AND user_id = $2', [req.params.id, req.dbUser.id]);
+app.post('/api/share/:id', authMiddleware, (req, res) => {
+  const row = db.prepare('SELECT * FROM readings WHERE id = ? AND user_id = ?').get(req.params.id, req.dbUser.id);
   if (!row) return res.status(404).json({ error: '记录不存在' });
-
   let token = row.share_token;
   if (!token) {
     token = Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
-    await pgRun('UPDATE readings SET share_token = $1 WHERE id = $2', [token, row.id]);
+    db.prepare('UPDATE readings SET share_token = ? WHERE id = ?').run(token, row.id);
   }
-
   res.json({ share_token: token, share_url: `/share/${token}` });
 });
 
-app.get('/api/share/:token', async (req, res) => {
-  const row = await pgOne(
-    'SELECT question, cards, result, category, created_at FROM readings WHERE share_token = $1',
-    [req.params.token]
-  );
+app.get('/api/share/:token', (req, res) => {
+  const row = db.prepare(
+    'SELECT question, cards, result, category, created_at FROM readings WHERE share_token = ?'
+  ).get(req.params.token);
   if (!row) return res.status(404).json({ error: '分享链接不存在' });
   res.json({ ...row, cards: JSON.parse(row.cards) });
 });
 
 // ─── Admin Routes ──────────────────────────────────────────────────────────────
-app.get('/api/admin/stats', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/stats', authMiddleware, adminMiddleware, (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
-
-  const totalUsers = (await pgOne('SELECT COUNT(*)::int as c FROM users WHERE is_admin = 0')).c;
-  const todayUsers = (await pgOne('SELECT COUNT(*)::int as c FROM users WHERE is_admin = 0 AND created_at LIKE $1', [today + '%'])).c;
-  const todayReadings = (await pgOne('SELECT COUNT(*)::int as c FROM readings WHERE created_at LIKE $1', [today + '%'])).c;
-  const members = (await pgOne('SELECT COUNT(*)::int as c FROM users WHERE remaining_count > 0 AND is_admin = 0')).c;
-  const totalReadings = (await pgOne('SELECT COUNT(*)::int as c FROM readings')).c;
-
+  const totalUsers    = db.prepare('SELECT COUNT(*) as c FROM users WHERE is_admin = 0').get().c;
+  const todayUsers    = db.prepare("SELECT COUNT(*) as c FROM users WHERE is_admin = 0 AND created_at LIKE ?").get(today + '%').c;
+  const todayReadings = db.prepare("SELECT COUNT(*) as c FROM readings WHERE created_at LIKE ?").get(today + '%').c;
+  const members       = db.prepare("SELECT COUNT(*) as c FROM users WHERE remaining_count > 0 AND is_admin = 0").get().c;
+  const totalReadings = db.prepare('SELECT COUNT(*) as c FROM readings').get().c;
   res.json({ totalUsers, todayUsers, todayReadings, members, totalReadings });
 });
 
-app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/users', authMiddleware, adminMiddleware, (req, res) => {
   const search = req.query.search || '';
   const page   = Math.max(1, parseInt(req.query.page) || 1);
   const limit  = 20;
   const offset = (page - 1) * limit;
   const like   = `%${search}%`;
-
-  const rows = await pgAll(
-    'SELECT id, username, note, invited_by, remaining_count, created_at FROM users WHERE is_admin = 0 AND username LIKE $1 ORDER BY id DESC LIMIT $2 OFFSET $3',
-    [like, limit, offset]
-  );
-
-  const total = (await pgOne('SELECT COUNT(*)::int as c FROM users WHERE is_admin = 0 AND username LIKE $1', [like])).c;
-
+  const rows = db.prepare(
+    'SELECT id, username, note, invited_by, remaining_count, created_at FROM users WHERE is_admin = 0 AND username LIKE ? ORDER BY id DESC LIMIT ? OFFSET ?'
+  ).all(like, limit, offset);
+  const total = db.prepare('SELECT COUNT(*) as c FROM users WHERE is_admin = 0 AND username LIKE ?').get(like).c;
   res.json({ list: rows, total });
 });
 
-app.post('/api/admin/users/:id/member', authMiddleware, adminMiddleware, async (req, res) => {
+app.post('/api/admin/users/:id/member', authMiddleware, adminMiddleware, (req, res) => {
   const { action, months } = req.body || {};
-  const user = await pgOne('SELECT * FROM users WHERE id = $1 AND is_admin = 0', [req.params.id]);
+  const user = db.prepare('SELECT * FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
 
   if (action === 'grant') {
     const m = Math.max(1, parseInt(months) || 1);
     const base = (user.is_member && user.member_expires_at && new Date(user.member_expires_at) > new Date())
       ? new Date(user.member_expires_at) : new Date();
-
     base.setMonth(base.getMonth() + m);
-
-    await pgRun(
-      'UPDATE users SET is_member = 1, member_expires_at = $1 WHERE id = $2',
-      [base.toISOString(), user.id]
-    );
-
+    db.prepare('UPDATE users SET is_member = 1, member_expires_at = ? WHERE id = ?')
+      .run(base.toISOString(), user.id);
     res.json({ message: `已发放${m}个月星渊会员` });
   } else if (action === 'revoke') {
-    await pgRun('UPDATE users SET is_member = 0, member_expires_at = NULL WHERE id = $1', [user.id]);
+    db.prepare('UPDATE users SET is_member = 0, member_expires_at = NULL WHERE id = ?').run(user.id);
     res.json({ message: '已取消会员' });
   } else {
     res.status(400).json({ error: '无效的action' });
   }
 });
 
-app.post('/api/admin/users/:id/credits', authMiddleware, adminMiddleware, async (req, res) => {
+app.post('/api/admin/users/:id/credits', authMiddleware, adminMiddleware, (req, res) => {
   const { count } = req.body || {};
   const n = Math.max(1, Math.min(9999, parseInt(count) || 0));
   if (!n) return res.status(400).json({ error: '请输入有效次数（1-9999）' });
-
-  const user = await pgOne('SELECT * FROM users WHERE id = $1 AND is_admin = 0', [req.params.id]);
+  const user = db.prepare('SELECT * FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-
-  await pgRun('UPDATE users SET remaining_count = remaining_count + $1 WHERE id = $2', [n, user.id]);
-  const updated = await pgOne('SELECT remaining_count FROM users WHERE id = $1', [user.id]);
-
+  db.prepare('UPDATE users SET remaining_count = remaining_count + ? WHERE id = ?').run(n, user.id);
+  const updated = db.prepare('SELECT remaining_count FROM users WHERE id = ?').get(user.id);
   res.json({ message: `已充值 ${n} 次，当前剩余 ${updated.remaining_count} 次` });
 });
 
-app.post('/api/admin/credits', authMiddleware, adminMiddleware, async (req, res) => {
+app.post('/api/admin/credits', authMiddleware, adminMiddleware, (req, res) => {
   const { username, count } = req.body || {};
   if (!username) return res.status(400).json({ error: '请输入用户名' });
-
   const n = Math.max(1, Math.min(9999, parseInt(count) || 0));
   if (!n) return res.status(400).json({ error: '请输入有效次数（1-9999）' });
-
-  const user = await pgOne('SELECT * FROM users WHERE username = $1 AND is_admin = 0', [username]);
+  const user = db.prepare('SELECT * FROM users WHERE username = ? AND is_admin = 0').get(username);
   if (!user) return res.status(404).json({ error: `用户 "${username}" 不存在` });
-
-  await pgRun('UPDATE users SET remaining_count = remaining_count + $1 WHERE id = $2', [n, user.id]);
-  const updated = await pgOne('SELECT remaining_count FROM users WHERE id = $1', [user.id]);
-
+  db.prepare('UPDATE users SET remaining_count = remaining_count + ? WHERE id = ?').run(n, user.id);
+  const updated = db.prepare('SELECT remaining_count FROM users WHERE id = ?').get(user.id);
   res.json({ message: `${username} 已充值 ${n} 次，当前剩余 ${updated.remaining_count} 次` });
 });
 
-app.get('/api/admin/invites', authMiddleware, adminMiddleware, async (req, res) => {
-  const rows = await pgAll(
-    `SELECT i.id, i.code, i.used_at, i.created_at, u.username AS used_by_name
-     FROM invite_codes i LEFT JOIN users u ON i.used_by = u.id
-     ORDER BY i.id DESC LIMIT 200`
-  );
-
+app.get('/api/admin/invites', authMiddleware, adminMiddleware, (req, res) => {
+  const rows = db.prepare(`
+    SELECT i.id, i.code, i.used_at, i.created_at, u.username AS used_by_name
+    FROM invite_codes i LEFT JOIN users u ON i.used_by = u.id
+    ORDER BY i.id DESC LIMIT 200
+  `).all();
   res.json(rows);
 });
 
-app.post('/api/admin/invites', authMiddleware, adminMiddleware, async (req, res) => {
+app.post('/api/admin/invites', authMiddleware, adminMiddleware, (req, res) => {
   const CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const count = Math.min(50, Math.max(1, parseInt(req.body?.count) || 1));
   const codes = [];
-
   for (let i = 0; i < count; i++) {
     let suffix = '';
     for (let j = 0; j < 6; j++) suffix += CHARSET[Math.floor(Math.random() * CHARSET.length)];
-
     const code = 'XJ' + suffix;
-
     try {
-      await pgRun('INSERT INTO invite_codes (code) VALUES ($1)', [code]);
+      db.prepare('INSERT INTO invite_codes (code) VALUES (?)').run(code);
       codes.push(code);
-    } catch {
-      // duplicate, skip
-    }
+    } catch { /* duplicate, skip */ }
   }
-
   res.json({ codes });
 });
 
-app.delete('/api/admin/invites/:id', authMiddleware, adminMiddleware, async (req, res) => {
-  const info = await pgRun('DELETE FROM invite_codes WHERE id = $1 AND used_by IS NULL', [req.params.id]);
-
-  if (!info.rowCount) return res.status(400).json({ error: '无法删除（已被使用或不存在）' });
-
+app.delete('/api/admin/invites/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const info = db.prepare('DELETE FROM invite_codes WHERE id = ? AND used_by IS NULL').run(req.params.id);
+  if (!info.changes) return res.status(400).json({ error: '无法删除（已被使用或不存在）' });
   res.json({ message: '已删除' });
 });
 
-app.get('/api/admin/category-stats', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/category-stats', authMiddleware, adminMiddleware, (req, res) => {
   const days = Math.min(90, parseInt(req.query.days) || 30);
   const since = new Date();
   since.setDate(since.getDate() - days + 1);
   const sinceStr = since.toISOString().slice(0, 10);
-
-  const rows = await pgAll(
-    'SELECT category, SUM(count)::int AS total FROM question_stats WHERE date >= $1 GROUP BY category ORDER BY total DESC',
-    [sinceStr]
-  );
-
-  const total = rows.reduce((sum, row) => sum + Number(row.total || 0), 0);
-
+  const rows = db.prepare(
+    'SELECT category, SUM(count) AS total FROM question_stats WHERE date >= ? GROUP BY category ORDER BY total DESC'
+  ).all(sinceStr);
+  const total = rows.reduce((s, r) => s + r.total, 0);
   res.json({ rows, total, days });
 });
 
-app.get('/api/admin/category-stats/daily', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/category-stats/daily', authMiddleware, adminMiddleware, (req, res) => {
   const days = Math.min(30, parseInt(req.query.days) || 7);
   const since = new Date();
   since.setDate(since.getDate() - days + 1);
   const sinceStr = since.toISOString().slice(0, 10);
-
-  const rows = await pgAll(
-    'SELECT date, category, count FROM question_stats WHERE date >= $1 ORDER BY date ASC, count DESC',
-    [sinceStr]
-  );
-
+  const rows = db.prepare(
+    'SELECT date, category, count FROM question_stats WHERE date >= ? ORDER BY date ASC, count DESC'
+  ).all(sinceStr);
   res.json(rows);
 });
 
-app.put('/api/admin/users/:id/note', authMiddleware, adminMiddleware, async (req, res) => {
+app.put('/api/admin/users/:id/note', authMiddleware, adminMiddleware, (req, res) => {
   const { note } = req.body || {};
-  const user = await pgOne('SELECT id FROM users WHERE id = $1 AND is_admin = 0', [req.params.id]);
+  const user = db.prepare('SELECT id FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-
-  await pgRun('UPDATE users SET note = $1 WHERE id = $2', [(note || '').trim() || null, user.id]);
-
+  db.prepare('UPDATE users SET note = ? WHERE id = ?').run((note || '').trim() || null, user.id);
   res.json({ message: '备注已保存' });
 });
 
-app.get('/api/admin/questions', authMiddleware, adminMiddleware, async (req, res) => {
+app.get('/api/admin/questions', authMiddleware, adminMiddleware, (req, res) => {
   const { category, username, start_date, end_date } = req.query;
   const conditions = [];
   const params = [];
-
-  if (username) {
-    params.push(`%${username}%`);
-    conditions.push(`u.username LIKE $${params.length}`);
-  }
-
-  if (category) {
-    params.push(category);
-    conditions.push(`r.category = $${params.length}`);
-  }
-
-  if (start_date) {
-    params.push(start_date);
-    conditions.push(`r.created_at >= $${params.length}`);
-  }
-
-  if (end_date) {
-    params.push(end_date + ' 23:59:59');
-    conditions.push(`r.created_at <= $${params.length}`);
-  }
-
+  if (username) { conditions.push('u.username LIKE ?'); params.push(`%${username}%`); }
+  if (category) { conditions.push('r.category = ?'); params.push(category); }
+  if (start_date) { conditions.push("date(r.created_at) >= ?"); params.push(start_date); }
+  if (end_date) { conditions.push("date(r.created_at) <= ?"); params.push(end_date); }
   if (!conditions.length) return res.status(400).json({ error: '需要至少一个筛选条件' });
-
   const sql = `SELECT r.id, r.question, r.category, r.created_at, u.username
                FROM readings r JOIN users u ON r.user_id = u.id
                WHERE ${conditions.join(' AND ')} ORDER BY r.id DESC LIMIT 200`;
-
-  const rows = await pgAll(sql, params);
-  res.json(rows);
+  res.json(db.prepare(sql).all(...params));
 });
 
-app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
-  const user = await pgOne('SELECT * FROM users WHERE id = $1 AND is_admin = 0', [req.params.id]);
+app.delete('/api/admin/users/:id', authMiddleware, adminMiddleware, (req, res) => {
+  const user = db.prepare('SELECT * FROM users WHERE id = ? AND is_admin = 0').get(req.params.id);
   if (!user) return res.status(404).json({ error: '用户不存在' });
-
-  await pgRun('DELETE FROM readings WHERE user_id = $1', [user.id]);
-  await pgRun('UPDATE invite_codes SET used_by = NULL, used_at = NULL WHERE used_by = $1', [user.id]);
-  await pgRun('DELETE FROM users WHERE id = $1', [user.id]);
-
+  db.prepare('DELETE FROM readings WHERE user_id = ?').run(user.id);
+  db.prepare('UPDATE invite_codes SET used_by = NULL, used_at = NULL WHERE used_by = ?').run(user.id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
   res.json({ message: `用户 ${user.username} 已删除` });
 });
 
@@ -718,13 +674,7 @@ app.use('/admin', express.static(path.join(__dirname, 'admin')));
 app.get('/admin', (_req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
 app.get('/admin/*', (_req, res) => res.sendFile(path.join(__dirname, 'admin', 'index.html')));
 
-initDb()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`玄机塔罗 PostgreSQL server running on port ${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('数据库初始化失败:', err);
-    process.exit(1);
-  });
+app.listen(PORT, () => {
+  console.log(`✦ 玄机塔罗已启动 → http://localhost:${PORT}`);
+  console.log(`  管理后台 → http://localhost:${PORT}/admin`);
+});

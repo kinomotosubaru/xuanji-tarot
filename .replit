@@ -9,6 +9,10 @@ channel = "stable-23_11"
 localPort = 3000
 externalPort = 80
 
+[[ports]]
+localPort = 4000
+externalPort = 3000
+
 [env]
 PORT = "3000"
 
@@ -18,3 +22,4 @@ expertMode = true
 [deployment]
 run = ["sh", "-c", "node server.js"]
 build = ["sh", "-c", "npm install"]
+deploymentTarget = "cloudrun"
