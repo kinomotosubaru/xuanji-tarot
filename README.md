@@ -7,12 +7,13 @@
 ### Replit
 1. 上传项目文件到 Replit
 2. 在 **Secrets** 中添加：`DEEPSEEK_API_KEY = 你的Key`
-3. 点击 **Run**，访问 `https://你的域名`
+3. 添加：`DATABASE_URL = 你的 PostgreSQL 连接串`
+4. 点击 **Run**，访问 `https://你的域名`
 
 ### 本地运行
 ```bash
 npm install
-DEEPSEEK_API_KEY=your_key node server.js
+DATABASE_URL=your_postgres_url DEEPSEEK_API_KEY=your_key node server.js
 ```
 
 ## 默认账号
@@ -49,13 +50,14 @@ DEEPSEEK_API_KEY=your_key node server.js
 
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
+| `DATABASE_URL` | PostgreSQL 连接串（必填） | — |
 | `DEEPSEEK_API_KEY` | DeepSeek API密钥（必填） | — |
 | `PORT` | 监听端口 | 3000 |
 | `JWT_SECRET` | JWT签名密钥（建议修改） | xuanji-tarot-secret-xj2024 |
 
 ## 技术栈
 
-- **后端**：Node.js + Express + better-sqlite3 + jsonwebtoken + bcryptjs
+- **后端**：Node.js + Express + pg + jsonwebtoken + bcryptjs
 - **前端**：原生 HTML/CSS/JS + TailwindCSS CDN
 - **AI**：DeepSeek Chat API（deepseek-chat 模型）
-- **数据库**：SQLite（本地文件 `xuanji.db`）
+- **数据库**：PostgreSQL（通过 `DATABASE_URL` 连接）
