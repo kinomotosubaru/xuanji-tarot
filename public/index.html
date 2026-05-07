@@ -230,6 +230,7 @@ textarea:focus,input:focus{outline:none}
              font-size:10px;letter-spacing:2px;cursor:pointer;padding:4px 10px;border-radius:2px;
              font-family:'Noto Serif SC',serif;display:none">充值</button>
     <button id="nav-hist" onclick="openHistory()">推演记录</button>
+    <button id="nav-logout" onclick="logout()" style="background:transparent;border:none;color:#555;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'Noto Serif SC',serif">退出登录</button>
   </div>
 </nav>
 
@@ -559,6 +560,15 @@ async function doRegister(e){
 /* ═══════════════════════════════════════════
    API
    ═══════════════════════════════════════════ */
+function logout(){
+  TOKEN=null;
+  USERNAME=null;
+  localStorage.removeItem('xuanji_token');
+  localStorage.removeItem('xuanji_username');
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  location.reload();
+}
+
 async function apiCall(method,path,body,auth=true){
   const opts={method,headers:{'Content-Type':'application/json'}};
   if(auth&&TOKEN)opts.headers['Authorization']='Bearer '+TOKEN;
